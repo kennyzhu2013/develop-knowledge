@@ -1,0 +1,32 @@
+meta:
+  id: code-repositories
+  title: 代码仓库清单
+  domain: code
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+
+# local_path：推荐的本地目录（相对本知识库仓库），多根工作区 / gen_code_index.py 使用。
+repositories:
+  - id: mid-number
+    url: TODO
+    local_path: ../mid-number
+    default_branch: main
+    services: [mid-number-service]
+  - id: call-qc
+    url: TODO
+    local_path: ../call-qc
+    default_branch: main
+    services: [call-qc-service]
+  - id: fraud-agent
+    url: TODO
+    local_path: ../fraud-agent
+    default_branch: main
+    services: [fraud-agent]
+  - id: asr
+    url: TODO
+    local_path: ../asr
+    default_branch: main
+    services: [asr-service]

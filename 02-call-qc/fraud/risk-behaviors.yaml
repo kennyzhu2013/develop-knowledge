@@ -1,0 +1,41 @@
+meta:
+  id: fraud-risk-behaviors
+  title: 风险行为库
+  domain: call_qc
+  kind: dynamic
+  audience: [developer, qa, architect]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+
+behaviors:
+  - id: RB-TRUST-001
+    name: 建立信任
+    description: 通过寒暄、套近乎、冒充熟人等方式建立信任
+    speaker: caller
+    signals: [自称老师/客服/熟人, 主动提及对方个人信息]
+  - id: RB-INVEST-001
+    name: 推荐投资
+    description: 推荐高收益、保本、内幕类投资项目
+    speaker: caller
+    signals: [稳赚不赔, 内部消息, 带单]
+  - id: RB-APP-001
+    name: 引导下载 App
+    description: 引导安装非官方 App 或点击链接
+    speaker: caller
+    signals: [下载链接, 扫码安装, 屏幕共享]
+  - id: RB-TRANSFER-001
+    name: 要求转账
+    description: 要求向指定账户转账或充值
+    speaker: caller
+    signals: [安全账户, 保证金, 解冻费]
+  - id: RB-AUTH-001
+    name: 冒充权威身份
+    description: 冒充公检法、银行、政府机构
+    speaker: caller
+    signals: [警号, 通缉, 案件编号]
+  - id: RB-THREAT-001
+    name: 恐吓施压
+    description: 以法律责任、账户冻结等恐吓
+    speaker: caller
+    signals: [冻结, 逮捕, 保密不准告诉家人]

@@ -1,0 +1,257 @@
+# 知识库总索引。Agent 首先读取本文件（或通过 tools/kb_route.py 使用它）。
+# 所有 path 均相对仓库根目录；目录会被展开为其中的 .md / .yaml 文件，并按文档 frontmatter 的 audience 过滤。
+version: 1
+
+# ---------------------------------------------------------------------------
+# 角色：所有角色共用同一套知识，只是入口、默认加载内容和可用 Skill 不同。
+# ---------------------------------------------------------------------------
+roles:
+  architect:
+    name: 技术架构师
+    entry: roles/architect.md
+    always_load:
+      - 00-context/business-overview.md
+      - 04-architecture/overall.md
+    focus: [architecture, decision, dependency, nonfunctional]
+    skills: [understand-system, architecture-review, impact-analysis]
+  developer:
+    name: 研发工程师
+    entry: roles/developer.md
+    always_load:
+      - 00-context/glossary.md
+      - 08-development/coding.md
+    focus: [business-flow, code, api, data, test]
+    skills: [understand-system, impact-analysis, modify-api, modify-mq, modify-database, add-qc-rule, add-fraud-pattern]
+  ops:
+    name: 运维人员
+    entry: roles/ops.md
+    always_load:
+      - 07-operation/deployment.md
+      - 07-operation/monitoring.md
+    focus: [runtime, alert, runbook, incident]
+    skills: [troubleshoot, release-check]
+  qa:
+    name: 测试工程师
+    entry: roles/qa.md
+    always_load:
+      - 00-context/glossary.md
+      - 08-development/testing.md
+    focus: [business-rule, sample, test, regression]
+    skills: [add-qc-rule, add-fraud-pattern, release-check]
+
+# ---------------------------------------------------------------------------
+# 业务/技术域
+# ---------------------------------------------------------------------------
+domains:
+  context:
+    name: 全局上下文
+    paths: [00-context/]
+  mid_number:
+    name: 中间号
+    paths: [01-mid-number/]
+    services: [mid-number-service]
+  call_qc:
+    name: 语音质检
+    paths: [02-call-qc/]
+    services: [call-qc-service, fraud-agent]
+  ai:
+    name: AI 能力
+    paths: [03-ai/]
+    services: [asr-service, fraud-agent]
+  architecture:
+    name: 系统架构
+    paths: [04-architecture/]
+  code:
+    name: 代码知识
+    paths: [05-code/]
+  data:
+    name: 数据与接口
+    paths: [06-data/]
+  operation:
+    name: 运行运维
+    paths: [07-operation/]
+  development:
+    name: 研发规范
+    paths: [08-development/]
+  decisions:
+    name: 架构决策
+    paths: [09-decisions/]
+  lessons:
+    name: 经验与故障
+    paths: [10-lessons/]
+
+# ---------------------------------------------------------------------------
+# 服务清单：每个服务在 05-code/services/<name>.yaml 有一份描述（尽量自动生成）。
+# ---------------------------------------------------------------------------
+services:
+  - mid-number-service
+  - call-qc-service
+  - fraud-agent
+  - asr-service
+
+# ---------------------------------------------------------------------------
+# 任务路由：关键词命中 → 最小知识集。by_role 是在通用 load 之外，该角色额外需要的内容。
+# 关键词大小写不敏感；按命中数排序，取前 max_routes 条合并。
+# ---------------------------------------------------------------------------
+router:
+  max_routes: 3
+  max_files: 20
+
+routes:
+  - id: number-700
+    keywords: ["700", "号码申请", "700号码"]
+    load:
+      - 01-mid-number/700/
+      - 01-mid-number/business-flow.md
+      - 05-code/services/mid-number-service.yaml
+    by_role:
+      developer: [06-data/api/, 08-development/api-development.md]
+      architect: [09-decisions/]
+      ops: [07-operation/runbooks/]
+    skills: [modify-api, impact-analysis]
+
+  - id: mid-number-binding
+    keywords: ["中间号", "隐私号", "绑定", "解绑", "axb", "axn", "小号"]
+    load:
+      - 01-mid-number/overview.md
+      - 01-mid-number/business-flow.md
+      - 05-code/services/mid-number-service.yaml
+    by_role:
+      developer: [06-data/api/, 06-data/tables/]
+      architect: [04-architecture/high-availability.md]
+    skills: [understand-system, impact-analysis]
+
+  - id: call-routing
+    keywords: ["呼叫路由", "路由", "呼转", "话路", "sip", "信令"]
+    load:
+      - 01-mid-number/call-routing/
+      - 01-mid-number/business-flow.md
+    by_role:
+      ops: [07-operation/runbooks/]
+    skills: [understand-system]
+
+  - id: number-pool
+    keywords: ["号码池", "号池", "回收", "号码分配"]
+    load:
+      - 01-mid-number/number-pool/
+      - 05-code/services/mid-number-service.yaml
+    skills: [impact-analysis]
+
+  - id: overseas
+    keywords: ["出海", "海外", "国际", "overseas"]
+    load:
+      - 01-mid-number/overseas/
+      - 04-architecture/security.md
+    skills: [architecture-review]
+
+  - id: charging
+    keywords: ["计费", "话单", "cdr", "账单", "结算"]
+    load:
+      - 01-mid-number/charging/
+      - 06-data/mq/
+    skills: [impact-analysis, modify-mq]
+
+  - id: qc-pipeline
+    keywords: ["质检", "质检流程", "质检任务", "离线质检", "质检结果"]
+    load:
+      - 02-call-qc/overview.md
+      - 02-call-qc/pipeline.md
+      - 05-code/services/call-qc-service.yaml
+      - 05-code/call-chain/
+    by_role:
+      ops: [07-operation/runbooks/, 10-lessons/]
+      developer: [06-data/mq/, 06-data/tables/]
+    skills: [understand-system, troubleshoot]
+
+  - id: realtime-qc
+    keywords: ["实时质检", "实时", "流式", "分片"]
+    load:
+      - 02-call-qc/realtime-qc.md
+      - 03-ai/asr.md
+      - 09-decisions/
+    skills: [architecture-review, impact-analysis]
+
+  - id: qc-rule
+    keywords: ["质检规则", "规则", "投诉", "骚扰", "语义质检", "规则引擎"]
+    load:
+      - 02-call-qc/rules.md
+      - 02-call-qc/pipeline.md
+      - 05-code/services/call-qc-service.yaml
+    by_role:
+      qa: [08-development/testing.md]
+    skills: [add-qc-rule]
+
+  - id: fraud
+    keywords: ["反诈", "涉诈", "诈骗", "fraud", "风险行为", "话术"]
+    load:
+      - 02-call-qc/fraud/
+      - 05-code/services/fraud-agent.yaml
+      - 03-ai/agent.md
+    by_role:
+      qa: [08-development/testing.md]
+      architect: [03-ai/rag.md]
+    skills: [add-fraud-pattern, add-qc-rule]
+
+  - id: ai-model
+    keywords: ["asr", "转写", "大模型", "llm", "rag", "prompt", "模型", "推理"]
+    load:
+      - 03-ai/overview.md
+      - 03-ai/model-serving.md
+    by_role:
+      developer: [03-ai/llm.md, 03-ai/rag.md, 03-ai/asr.md]
+      ops: [03-ai/model-serving.md, 07-operation/monitoring.md]
+    skills: [understand-system]
+
+  - id: api-change
+    keywords: ["接口", "api", "字段", "入参", "出参", "兼容"]
+    load:
+      - 06-data/api/
+      - 08-development/api-development.md
+    skills: [modify-api, impact-analysis]
+
+  - id: mq-change
+    keywords: ["mq", "消息", "topic", "kafka", "rocketmq", "消费", "事件"]
+    load:
+      - 06-data/mq/
+      - 06-data/events/
+      - 05-code/dependency-map.yaml
+    skills: [modify-mq, impact-analysis]
+
+  - id: db-change
+    keywords: ["数据库", "表结构", "ddl", "索引", "mysql", "字段变更", "迁移"]
+    load:
+      - 06-data/tables/
+      - 08-development/database-change.md
+    skills: [modify-database, impact-analysis]
+
+  - id: incident
+    keywords: ["告警", "故障", "延迟", "超时", "报错", "积压", "宕机", "排查", "异常"]
+    load:
+      - 07-operation/runbooks/
+      - 10-lessons/
+      - 07-operation/monitoring.md
+    by_role:
+      developer: [05-code/call-chain/]
+    skills: [troubleshoot]
+
+  - id: release
+    keywords: ["发布", "上线", "部署", "回滚", "灰度", "变更"]
+    load:
+      - 07-operation/deployment.md
+      - 08-development/release.md
+    skills: [release-check]
+
+  - id: architecture
+    keywords: ["架构", "评审", "高可用", "容量", "扩容", "技术选型", "重构", "解耦"]
+    load:
+      - 04-architecture/
+      - 09-decisions/
+      - 05-code/dependency-map.yaml
+    skills: [architecture-review, impact-analysis]
+
+  - id: kb-maintenance
+    keywords: ["知识库", "文档", "adr", "复盘"]
+    load:
+      - README.md
+      - 99-agent/templates/
+    skills: [kb-update]

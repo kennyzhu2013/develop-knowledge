@@ -1,0 +1,35 @@
+meta:
+  id: data-events
+  title: 业务事件清单
+  domain: data
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+
+# 事件名是全局唯一标识，05-code/services/*.yaml 的 events.produce / consume 必须引用这里的名字。
+events:
+  - name: CallCompleted
+    topic: TODO_CALL_COMPLETED
+    description: 一通中间号通话结束
+    fields:
+      - { name: call_id, type: string, desc: 通话唯一 ID }
+      - { name: middle_number, type: string, desc: 中间号（脱敏规则见 04-architecture/security.md） }
+      - { name: start_time, type: datetime, desc: 开始时间 }
+      - { name: duration_s, type: int, desc: 通话时长 }
+      - { name: record_url, type: string, desc: 录音地址 }
+  - name: QCCompleted
+    topic: TODO_QC_COMPLETED
+    description: 一通通话的质检完成
+    fields:
+      - { name: call_id, type: string, desc: 通话唯一 ID }
+      - { name: labels, type: list, desc: 命中的规则 / 标签 }
+      - { name: risk_level, type: string, desc: 风险等级 }
+  - name: FraudDetected
+    topic: TODO_FRAUD_DETECTED
+    description: 识别到涉诈风险
+    fields:
+      - { name: call_id, type: string, desc: 通话唯一 ID }
+      - { name: pattern_id, type: string, desc: 诈骗模式 ID（FP-*） }
+      - { name: confidence, type: float, desc: 置信度 }

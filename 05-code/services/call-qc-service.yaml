@@ -1,0 +1,44 @@
+meta:
+  id: svc-call-qc-service
+  title: call-qc-service
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  generated_by: manual
+
+service:
+  name: call-qc-service
+  description: 质检任务调度、规则执行、结果融合
+  repository: call-qc
+  path: .
+  language: TODO
+  framework: TODO
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: [asr-service, fraud-agent]
+  middleware: [mq, mysql, object-storage]
+
+apis:
+  provides:
+    - { method: POST, path: TODO/qc/task, summary: 手工发起质检 }
+    - { method: GET, path: TODO/qc/result, summary: 查询质检结果 }
+
+events:
+  consume: [CallCompleted]
+  produce: [QCCompleted, FraudDetected]
+
+tables: [qc_task]
+
+slo:
+  e2e_latency_p95_s: TODO
+
+runbooks:
+  - 07-operation/runbooks/qc-result-delay.md
