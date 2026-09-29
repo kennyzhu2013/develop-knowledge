@@ -1,0 +1,45 @@
+meta:
+  id: svc-mid-number-service
+  title: mid-number-service
+  domain: mid_number
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  generated_by: manual   # manual | gen_code_index
+
+service:
+  name: mid-number-service
+  description: 中间号绑定、解绑、路由查询、700 号码申请
+  repository: mid-number
+  path: .
+  language: TODO
+  framework: TODO
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: []
+  middleware: [mq, cache, mysql]
+
+apis:
+  provides:
+    - { method: POST, path: TODO/bind, summary: 绑定 }
+    - { method: POST, path: TODO/unbind, summary: 解绑 }
+    - { method: POST, path: TODO/700/apply, summary: 700 号码申请 }
+
+events:
+  produce: [CallCompleted]
+  consume: [FraudDetected]
+
+tables: [TODO]
+
+slo:
+  availability: TODO
+  latency_p99_ms: TODO
+
+runbooks: []

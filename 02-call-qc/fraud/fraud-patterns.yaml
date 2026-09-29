@@ -1,0 +1,43 @@
+meta:
+  id: fraud-patterns
+  title: 诈骗模式库
+  domain: call_qc
+  kind: dynamic
+  audience: [developer, qa, architect]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+
+# 示例条目，结构可直接复用；内容请按实际业务替换。
+patterns:
+  - id: FP-INVESTMENT-001
+    name: 虚假投资理财
+    description: 以高收益投资为诱饵，引导下载 App 并转账
+    risk_level: high
+    risk_behaviors: [RB-TRUST-001, RB-INVEST-001, RB-APP-001, RB-TRANSFER-001]
+    conversation_flow:
+      - step: 1
+        behavior: RB-TRUST-001
+      - step: 2
+        behavior: RB-INVEST-001
+      - step: 3
+        behavior: RB-APP-001
+      - step: 4
+        behavior: RB-TRANSFER-001
+    rules: [RULE-FRAUD-001]
+    cases: []
+
+  - id: FP-IMPERSONATE-001
+    name: 冒充公检法
+    description: 冒充执法机关，以涉案为由要求转账到“安全账户”
+    risk_level: high
+    risk_behaviors: [RB-AUTH-001, RB-THREAT-001, RB-TRANSFER-001]
+    conversation_flow:
+      - step: 1
+        behavior: RB-AUTH-001
+      - step: 2
+        behavior: RB-THREAT-001
+      - step: 3
+        behavior: RB-TRANSFER-001
+    rules: [RULE-FRAUD-002]
+    cases: []

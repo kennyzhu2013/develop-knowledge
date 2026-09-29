@@ -1,0 +1,25 @@
+meta:
+  id: fraud-rules-index
+  title: 反诈规则索引
+  domain: call_qc
+  kind: dynamic
+  audience: [developer, qa]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  # 规则内容的事实源在代码或配置中心，这里只维护索引与覆盖关系。
+  source_of_truth: []
+
+rules:
+  - id: RULE-FRAUD-001
+    name: 投资诱导 + 转账组合
+    detects: [RB-INVEST-001, RB-TRANSFER-001]
+    engine: rule          # rule | model | agent
+    location: TODO        # 代码路径或配置中心 key
+    status: draft
+  - id: RULE-FRAUD-002
+    name: 冒充权威 + 恐吓 + 转账
+    detects: [RB-AUTH-001, RB-THREAT-001, RB-TRANSFER-001]
+    engine: agent
+    location: TODO
+    status: draft

@@ -1,0 +1,26 @@
+meta:
+  id: table-qc_task
+  title: qc_task 质检任务表
+  domain: data
+  kind: dynamic
+  audience: [developer, ops, qa]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  source_of_truth: []   # 迁移脚本路径
+
+table:
+  name: qc_task
+  database: TODO
+  service: call-qc-service
+  description: 每通需要质检的通话对应一条任务（示例，字段待按实际表结构替换）
+  columns:
+    - { name: id, type: bigint, nullable: false, desc: 主键 }
+    - { name: call_id, type: varchar(64), nullable: false, desc: 通话唯一 ID，关联话单 }
+    - { name: status, type: tinyint, nullable: false, desc: 任务状态，枚举见 02-call-qc/pipeline.md }
+    - { name: created_at, type: datetime, nullable: false, desc: 创建时间 }
+  indexes:
+    - { name: uk_call_id, columns: [call_id], unique: true }
+  readers: [call-qc-service]
+  writers: [call-qc-service]
+  retention: TODO

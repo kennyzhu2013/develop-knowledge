@@ -1,0 +1,25 @@
+meta:
+  id: code-dependency-map
+  title: 服务依赖图
+  domain: code
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  # 由 tools/kb_lint.py --write-deps 根据 05-code/services/*.yaml 汇总生成，请勿手改。
+  generated_by: kb_lint
+
+edges:
+- from: call-qc-service
+  to: asr-service
+  via: sync
+- from: call-qc-service
+  to: fraud-agent
+  via: sync
+- from: call-qc-service
+  to: mid-number-service
+  via: event:FraudDetected
+- from: mid-number-service
+  to: call-qc-service
+  via: event:CallCompleted

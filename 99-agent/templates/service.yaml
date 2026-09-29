@@ -1,0 +1,40 @@
+meta:
+  id: svc-<service-name>
+  title: <service-name>
+  domain: <domain>
+  kind: dynamic
+  audience: [all]
+  owner: <负责人>
+  status: draft
+  last_verified: YYYY-MM-DD
+  generated_by: manual   # manual | gen_code_index
+
+service:
+  name: <service-name>          # 必须出现在 knowledge.yaml 的 services 列表
+  description: <一句话职责>
+  repository: <05-code/repositories.yaml 中的 id>
+  path: .
+  language:
+  framework:
+
+runtime:
+  cluster:
+  namespace:
+  replicas:
+
+dependencies:
+  services: []                  # 同步调用的其它服务
+  middleware: []
+
+apis:
+  provides: []                  # - { method: POST, path: /x, summary: 说明 }
+
+events:
+  produce: []                   # 事件名须在 06-data/events/events.yaml 中
+  consume: []
+
+tables: []
+
+slo: {}
+
+runbooks: []

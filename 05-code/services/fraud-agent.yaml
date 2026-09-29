@@ -1,0 +1,42 @@
+meta:
+  id: svc-fraud-agent
+  title: fraud-agent
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  generated_by: manual
+
+service:
+  name: fraud-agent
+  description: 涉诈识别 Agent（规则初筛 + RAG + LLM 推理）
+  repository: fraud-agent
+  path: .
+  language: TODO
+  framework: TODO
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: []
+  middleware: [vector-db, llm-serving]
+
+apis:
+  provides:
+    - { method: POST, path: TODO/fraud/detect, summary: 涉诈判定 }
+
+events:
+  consume: []
+  produce: []
+
+tables: []
+
+slo:
+  latency_p95_ms: TODO
+
+runbooks: []

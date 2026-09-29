@@ -1,0 +1,22 @@
+meta:
+  id: table-<table_name>
+  title: <table_name> <中文名>
+  domain: data
+  kind: dynamic
+  audience: [developer, ops, qa]
+  owner: <负责人>
+  status: draft
+  last_verified: YYYY-MM-DD
+  source_of_truth: []
+
+table:
+  name: <table_name>
+  database:
+  service:
+  description:
+  columns:
+    - { name: id, type: bigint, nullable: false, desc: 主键 }
+  indexes: []
+  readers: []
+  writers: []
+  retention:

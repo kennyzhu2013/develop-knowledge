@@ -1,0 +1,31 @@
+meta:
+  id: data-mq-topics
+  title: MQ Topic 清单
+  domain: data
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+
+# 生产者 / 消费者以 05-code/services/*.yaml 为准，这里补充运行属性。
+topics:
+  - name: TODO_CALL_COMPLETED
+    event: CallCompleted
+    cluster: TODO
+    partitions: TODO
+    retention: TODO
+    consumer_groups: [TODO]
+    ordering: TODO   # 是否要求按 call_id 有序
+  - name: TODO_QC_COMPLETED
+    event: QCCompleted
+    cluster: TODO
+    partitions: TODO
+    retention: TODO
+    consumer_groups: [TODO]
+  - name: TODO_FRAUD_DETECTED
+    event: FraudDetected
+    cluster: TODO
+    partitions: TODO
+    retention: TODO
+    consumer_groups: [TODO]

@@ -1,0 +1,43 @@
+meta:
+  id: svc-asr-service
+  title: asr-service
+  domain: ai
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-09-29
+  generated_by: manual
+
+service:
+  name: asr-service
+  description: 离线 / 流式语音转写
+  repository: asr
+  path: .
+  language: TODO
+  framework: TODO
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: []
+  middleware: [object-storage]
+
+apis:
+  provides:
+    - { method: POST, path: TODO/asr/offline, summary: 离线转写 }
+    - { method: WS, path: TODO/asr/stream, summary: 流式转写 }
+
+events:
+  consume: []
+  produce: []
+
+tables: []
+
+slo:
+  rtf: TODO
+
+runbooks: []
