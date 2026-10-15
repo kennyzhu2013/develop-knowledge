@@ -3,213 +3,250 @@ meta:
   title: Redis Key
   domain: data
   kind: dynamic
-  audience: [developer, ops, qa]
+  audience:
+  - developer
+  - ops
+  - qa
   owner: TODO
   status: draft
-  last_verified: 2026-10-15
+  last_verified: '2026-10-15'
   source_of_truth:
-    - vi-assets/vi-cront-jobs-master/
-    - vi-assets/qa-server-master/apps/
-    - vi-assets/scheduler-master/src/main/java/com/cmic/service/RedisService.java
-    - vi-assets/vi-as-master/src/main/java/com/cmic/util/SessionLimitUtil.java
-  related: [mn-traffic-control-overview, qc-orchestration, data-overview]
-
-# 不写实例地址、库号和密码。号码用占位符。
-# vi-as 的 Jedis 客户端未初始化，AB- 与 max_call_limit_ 在当前启动路径上不生效。
+  - vi-assets/qa-server-master/apps/service.py
+  - vi-assets/qa-server-master/utils/helpers.py
+  - vi-assets/scheduler-master/src/main/java/com/cmic/service/RedisService.java
+  - vi-assets/vi-cront-jobs-master/viStrategyHighFrequency.py
+  - vi-assets/vi-as-master/src/main/java/com/cmic/util/SessionLimitUtil.java
+  related:
+  - data-overview
+notes:
+- 键名只用占位符，不写真实号码。话务策略 value 为 JSON 字符串：priority、isMain、condition.customerId，action.opType（0 拦截 1 放通 2
+  告警）、action.appendReason。
+- 策略 key 的读取方是外部 strategy-service。本仓库 vi-as 只调策略 HTTP，不直接 GET 这些 key。
+- vi-billcenter、vi-pusher、vi-media、vi-merge、offline-merge 不使用 Redis。vi-pusher 的 pom 引入 jedis，代码无调用。
+- 'CONFLICT: 设计文档样例把 threshold/offtime 的 TTL 写成未说明；代码里 offtime-{customerId} 只 SET 不 EXPIRE，threshold 仅在
+  control_valid_second>0 时 EXPIRE。'
 keys:
-  - name: "highfreq-{caller}"
-    type: string
-    ttl: control_valid_second；小于等于 0 时不过期
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 短时高频命中。appendReason 5
-    source: vi-assets/vi-cront-jobs-master/viStrategyHighFrequency.py
-  - name: "difarea-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 异地大范围。appendReason 21
-    source: vi-assets/vi-cront-jobs-master/viStrategyRemoteRange.py
-  - name: "offtime-{customerId}"
-    type: string
-    ttl: 无，停用后由清理脚本删除
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 非工作时间。value 含 curfew。appendReason 13
-    source: vi-assets/vi-cront-jobs-master/viStrategyOffwork.py
-  - name: "threshold-{customerId}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 企业外呼门限。appendReason 20
-    source: vi-assets/vi-cront-jobs-master/viStrategyBusinessThreshold.py
-  - name: "bizrange-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 超业务范围。appendReason 22 盲呼 / 23 短秒率 / 24 接通率
-    source: vi-assets/vi-cront-jobs-master/viStrategyBusinessRange.py
-  - name: "longcall-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 长通话。appendReason 25
-    source: vi-assets/vi-cront-jobs-master/viStrategyLongCall.py
-  - name: "province-highfreq-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 外省大范围高频。appendReason 26
-    source: vi-assets/vi-cront-jobs-master/viStrategyDifareaHighFreq.py
-  - name: "city-highfreq-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 外市大范围高频。appendReason 27
-    source: vi-assets/vi-cront-jobs-master/viStrategyDifareaHighFreq.py
-  - name: "inactive-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 沉默号码话务突增。appendReason 28
-    source: vi-assets/vi-cront-jobs-master/viStrategySilentCallBurst.py
-  - name: "idle-highfreq-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 闲时高频。appendReason 29
-    source: vi-assets/vi-cront-jobs-master/viStrategyIdleHighFreq.py
-  - name: "short-highfreq-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 短时高频突增。appendReason 30
-    source: vi-assets/vi-cront-jobs-master/viStrategyShortHighfreqBurst.py
-  - name: "short-longcall-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 短时长通话突增。appendReason 31
-    source: vi-assets/vi-cront-jobs-master/viStrategyShortLongcallBurst.py
-  - name: "inactive-difarea-longcall-{caller}"
-    type: string
-    ttl: control_valid_second
-    writer: vi-cront-jobs
-    reader: strategy-service
-    purpose: 沉默号码外地长通话突增。appendReason 32
-    source: vi-assets/vi-cront-jobs-master/viStrategySilentDifareaLongcall.py
-  - name: "QASERVER:WHITEIP"
-    type: set
-    ttl: 无
-    writer: qa-server
-    reader: qa-server
-    purpose: 来源 IP 白名单。通配命中后会把精确 IP 写回集合
-    source: vi-assets/qa-server-master/apps/__init__.py
-  - name: "QASERVER:WHITEURL"
-    type: set
-    ttl: 无
-    writer: qa-server
-    reader: qa-server
-    purpose: 回调 URL 白名单
-    source: vi-assets/qa-server-master/apps/__init__.py
-  - name: "AIQC_REQUEST_{requestId}"
-    type: string
-    ttl: 120s
-    writer: qa-server
-    reader: qa-server
-    purpose: 建任务去重。NX 失败返回 1001
-    source: vi-assets/qa-server-master/utils/helpers.py
-  - name: "{taskId}:{dataId}"
-    type: string
-    ttl: 50h
-    writer: qa-server
-    reader: qa-server
-    purpose: 子任务上下文
-    source: vi-assets/qa-server-master/apps/service.py
-  - name: "QARULE:{taskId}"
-    type: string
-    ttl: 50h
-    writer: qa-server
-    reader: qa-server
-    purpose: 任务规则快照
-    source: vi-assets/qa-server-master/apps/service.py
-  - name: "{taskId}"
-    type: string
-    ttl: 无
-    writer: qa-server
-    reader: qa-server
-    purpose: 准实时任务标记。无 TTL，需关注残留
-    source: vi-assets/qa-server-master/apps/task_consumer.py
-  - name: "QASUBRESULT:{yyyyMMddHHmm}"
-    type: list
-    ttl: 入库成功后删除
-    writer: qa-server
-    reader: qa-server
-    purpose: 普通质检明细分钟桶，随后 stream load 到海山
-    source: vi-assets/qa-server-master/apps/sub_worker.py
-  - name: "VIQASUBRESULT:{yyyyMMddHHmm}"
-    type: list
-    ttl: 入库成功后删除
-    writer: qa-server
-    reader: qa-server
-    purpose: 专线分片明细分钟桶
-    source: vi-assets/qa-server-master/apps/sub_worker.py
-  - name: "DCCQASUBRESULT:{yyyyMMddHHmm}"
-    type: list
-    ttl: 入库成功后删除
-    writer: qa-server
-    reader: qa-server
-    purpose: 700 话单质检明细分钟桶
-    source: vi-assets/qa-server-master/apps/sub_worker.py
-  - name: "QAFAIL:retry:lock"
-    type: string
-    ttl: 600s，持有期间续期
-    writer: qa-server
-    reader: qa-server
-    purpose: 专线失败重试的分布式锁
-    source: vi-assets/qa-server-master/apps/retry_worker.py
-  - name: "{dataId}"
-    type: string
-    ttl: 默认 7 天
-    writer: scheduler
-    reader: scheduler
-    purpose: 裸 dataId，值为 1。标记 ASR 结果可复用。无前缀，避免与其它 key 冲突
-    source: vi-assets/scheduler-master/src/main/java/com/cmic/service/ai/ASRService.java
-  - name: "attrs_callback{jobId}"
-    type: hash
-    ttl: 3 天，每次写入重置
-    writer: scheduler
-    reader: scheduler
-    purpose: 子任务回调属性。riskLevel 只升不降。回调后删除
-    source: vi-assets/scheduler-master/src/main/java/com/cmic/service/AttributeService.java
-  - name: "attrs_callId{callId}"
-    type: hash
-    ttl: 1 天
-    writer: scheduler
-    reader: scheduler
-    purpose: 同一通话跨分片属性，例如 interruptShard
-    source: vi-assets/scheduler-master/src/main/java/com/cmic/engine/condition/RedisCondition.java
-  - name: "AB-{caller}-{callee}"
-    type: string
-    ttl: 代码设置了 TTL
-    writer: vi-as
-    reader: vi-as
-    purpose: 主被叫对次数限制。当前 initRedis 未调用，不生效
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/util/SessionLimitUtil.java
-  - name: "max_call_limit_{customerId}"
-    type: hash
-    ttl: 约 2 小时清理
-    writer: vi-as
-    reader: vi-as
-    purpose: 客户并发限制。当前不生效，原因同上
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/util/SessionLimitUtil.java
+- name: AB-{caller}-{callee}
+  type: string
+  ttl: 首次 INCR 时按配置秒数 EXPIRE。当前阈值与 TTL 都硬编码为 -1，不会写入
+  writer: vi-as
+  reader: vi-as
+  purpose: 主被叫对呼叫次数。Application.initRedis 未调用且无 redis.xml，Jedis 未初始化，实际不生效
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/util/SessionLimitUtil.java
+- name: max_call_limit_{customerId}
+  type: hash
+  ttl: field 为会话 id，value 为毫秒时间戳。哈希本身无 TTL，读取时清理超过 2 小时的 field
+  writer: vi-as
+  reader: vi-as
+  purpose: 客户并发会话。与 AB- 相同，Redis 客户端未初始化，不生效
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/util/SessionLimitUtil.java
+- name: QASERVER:WHITEIP
+  type: set
+  ttl: 无 TTL
+  writer: qa-server
+  reader: qa-server
+  purpose: IP 白名单。命中通配后回写精确 IP
+  source: vi-assets/qa-server-master/apps/__init__.py
+- name: QASERVER:WHITEURL
+  type: set
+  ttl: 无 TTL
+  writer: qa-server
+  reader: qa-server
+  purpose: 回调 URL 白名单
+  source: vi-assets/qa-server-master/apps/__init__.py
+- name: AIQC_REQUEST_{requestId}
+  type: string
+  ttl: 120 秒
+  writer: qa-server
+  reader: qa-server
+  purpose: 管理接口请求去重，SET NX
+  source: vi-assets/qa-server-master/utils/helpers.py
+- name: VI{requestId}
+  type: string
+  ttl: 120 秒
+  writer: qa-server
+  reader: qa-server
+  purpose: 行业开户接口去重。前缀是 VI 直接拼接 requestId，没有分隔符
+  source: vi-assets/qa-server-master/apps/vi/views.py
+- name: '{taskId}:{dataId}'
+  type: string
+  ttl: 50 小时（QA_INFO_EXPIRATION）
+  writer: qa-server
+  reader: qa-server
+  purpose: 子任务上下文 JSON。准实时路径里 dataId 为话单 id
+  source: vi-assets/qa-server-master/apps/service.py
+- name: QARULE:{taskId}
+  type: string
+  ttl: 50 小时
+  writer: qa-server
+  reader: qa-server
+  purpose: 任务规则快照 JSON
+  source: vi-assets/qa-server-master/apps/service.py
+- name: '{taskId}'
+  type: string
+  ttl: 无 TTL
+  writer: qa-server
+  reader: qa-server
+  purpose: 准实时任务规则 JSON。存在则结果走 xpusher 判断。无过期，待确认清理
+  source: vi-assets/qa-server-master/apps/task_consumer.py
+- name: QASUBRESULT:{yyyyMMddHHmm}
+  type: list
+  ttl: 刷入库后删除
+  writer: qa-server
+  reader: qa-server
+  purpose: 普通质检明细分钟桶，刷到海山 qa_detail
+  source: vi-assets/qa-server-master/apps/sub_worker.py
+- name: VIQASUBRESULT:{yyyyMMddHHmm}
+  type: list
+  ttl: 刷入库后删除
+  writer: qa-server
+  reader: qa-server
+  purpose: 分片明细分钟桶，刷到 qa_segment
+  source: vi-assets/qa-server-master/apps/sub_worker.py
+- name: DCCQASUBRESULT:{yyyyMMddHHmm}
+  type: list
+  ttl: 刷入库后删除
+  writer: qa-server
+  reader: qa-server
+  purpose: 700 明细分钟桶，刷到 dcc 的 qa_detail
+  source: vi-assets/qa-server-master/apps/sub_worker.py
+- name: '{QASUBRESULT|VIQASUBRESULT|DCCQASUBRESULT}:lock'
+  type: string
+  ttl: 600 秒，执行中续期
+  writer: qa-server
+  reader: qa-server
+  purpose: 分钟桶刷库分布式锁
+  source: vi-assets/qa-server-master/apps/sub_worker.py
+- name: '{QASUBRESULT|VIQASUBRESULT|DCCQASUBRESULT}:latest'
+  type: string
+  ttl: 无 TTL，覆盖写
+  writer: qa-server
+  reader: qa-server
+  purpose: 已入库分钟游标
+  source: vi-assets/qa-server-master/apps/sub_worker.py
+- name: QAFAIL:retry:lock
+  type: string
+  ttl: 600 秒
+  writer: qa-server
+  reader: qa-server
+  purpose: qa_fail 重试任务锁
+  source: vi-assets/qa-server-master/apps/retry_worker.py
+- name: '{dataId}'
+  type: string
+  ttl: task.attributes.expire 天，默认 7 天。值为 1
+  writer: scheduler
+  reader: scheduler
+  purpose: 标记该 dataId 的 ASR 已写入 qa_detail、可复用。无前缀，与 qa-server 的裸 {taskId} 可能撞键，待确认
+  source: vi-assets/scheduler-master/src/main/java/com/cmic/service/RedisService.java
+- name: attrs_callback{jobId}
+  type: hash
+  ttl: 3 天，每次写入重置
+  writer: scheduler
+  reader: scheduler
+  purpose: 子任务回调附加属性。riskLevel 只升不降。回调结束后删除
+  source: vi-assets/scheduler-master/src/main/java/com/cmic/service/RedisService.java
+- name: attrs_callId{callId}
+  type: hash
+  ttl: 1 天
+  writer: scheduler
+  reader: scheduler
+  purpose: 同一通话跨分片共享属性，例如 interruptShard
+  source: vi-assets/scheduler-master/src/main/java/com/cmic/service/RedisService.java
+- name: processedUrl:{url}
+  type: string
+  ttl: 默认 7 天
+  writer: scheduler
+  reader: scheduler
+  purpose: 遗留。setProcessUrl / existProcessedUrl 无调用方
+  source: vi-assets/scheduler-master/src/main/java/com/cmic/service/RedisService.java
+- name: highfreq-{caller}
+  type: string
+  ttl: control_valid_second>0 时为其秒数，否则无 TTL
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 短时高频。appendReason 固定 5
+  source: vi-assets/vi-cront-jobs-master/viStrategyHighFrequency.py
+- name: difarea-{caller}
+  type: string
+  ttl: 同上
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 异地大范围。appendReason 21
+  source: vi-assets/vi-cront-jobs-master/viStrategyRemoteRange.py
+- name: offtime-{customerId}
+  type: string
+  ttl: 无 TTL
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 非工作时间。condition 含 threshold 与 curfew。appendReason 13
+  source: vi-assets/vi-cront-jobs-master/viStrategyOffwork.py
+- name: threshold-{customerId}
+  type: string
+  ttl: control_valid_second>0 时设置，否则无 TTL
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 超业务门限。appendReason 20
+  source: vi-assets/vi-cront-jobs-master/viStrategyBusinessThreshold.py
+- name: bizrange-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 超业务范围。appendReason 22 盲呼 / 23 短秒率 / 24 接通率
+  source: vi-assets/vi-cront-jobs-master/viStrategyBusinessRange.py
+- name: longcall-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 长通话。appendReason 25
+  source: vi-assets/vi-cront-jobs-master/viStrategyLongCall.py
+- name: province-highfreq-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 外省大范围高频。appendReason 26
+  source: vi-assets/vi-cront-jobs-master/viStrategyDifareaHighFreq.py
+- name: city-highfreq-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 外市大范围高频。appendReason 27
+  source: vi-assets/vi-cront-jobs-master/viStrategyDifareaHighFreq.py
+- name: inactive-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 沉默号码话务突增。appendReason 28
+  source: vi-assets/vi-cront-jobs-master/viStrategySilentCallBurst.py
+- name: idle-highfreq-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 闲时高频。appendReason 29
+  source: vi-assets/vi-cront-jobs-master/viStrategyIdleHighFreq.py
+- name: short-highfreq-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 短时高频突增。appendReason 30
+  source: vi-assets/vi-cront-jobs-master/viStrategyShortHighfreqBurst.py
+- name: short-longcall-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 短时长通话突增。appendReason 31
+  source: vi-assets/vi-cront-jobs-master/viStrategyShortLongcallBurst.py
+- name: inactive-difarea-longcall-{caller}
+  type: string
+  ttl: control_valid_second>0 时设置
+  writer: vi-cront-jobs
+  reader: strategy-service（外部，待确认）
+  purpose: 沉默号码外地长通话突增。appendReason 32
+  source: vi-assets/vi-cront-jobs-master/viStrategySilentDifareaLongcall.py

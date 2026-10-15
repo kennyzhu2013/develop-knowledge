@@ -3,127 +3,224 @@ meta:
   title: ETCD Key
   domain: data
   kind: dynamic
-  audience: [developer, ops]
+  audience:
+  - developer
+  - ops
+  - qa
   owner: TODO
   status: draft
-  last_verified: 2026-10-15
+  last_verified: '2026-10-15'
   source_of_truth:
-    - vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
-    - vi-assets/vi-media-master/internal/pkg/kv/registry/registry.go
-    - vi-assets/qa-server-master/utils/etcd.py
-  related: [arch-middleware, data-overview, svc-vi-as]
-
-# 不写集群地址。服务注册的实例 key 含主机和端口，这里只记前缀。
+  - vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+  - vi-assets/vi-billcenter-master/src/main/java/com/cmic/utils/Parameters.java
+  - vi-assets/qa-server-master/utils/etcd.py
+  - vi-assets/vi-media-master/internal/pkg/kv/registry/registry.go
+  - vi-assets/vi-media-master/internal/proxy/rtp.go
+  - vi-assets/vi-merge-master/internal/pkg/registry/registry.go
+  - vi-assets/offline-merge-master/internal/pkg/registry/registry.go
+  related:
+  - data-overview
+notes:
+- 不记录集群地址、实例 IP。Go 服务注册前缀为 /{clusterName}/micro-registry，生产配置里的 clusterName 为 vii。
+- qa-server 的 config_key、rule_key、number_key 是部署配置项名，仓库没有 config.yaml，字面路径待确认。
+- scheduler、vi-cront-jobs 不使用 ETCD。
+- 'CONFLICT: qa-server 号码接口 PUT number_key，但 consumers.py 的 watch 只有 config_key 与 rule_key。vi-as 刷新号码看的是
+  /config/num/version。两套 key 是否同步待确认。'
 keys:
-  - name: /config/version
-    type: 版本通知
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as, vi-billcenter, vi-pusher
-    purpose: 企业、客户、渠道配置变更后触发内存重载
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
-  - name: /config/num/version
-    type: 版本通知
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 号码报备变更后重载精确号码与前缀
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/service/AuthConfigService.java
-  - name: /config/phone_segment/version
-    type: 版本通知
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 号段表版本。另有 /config/phone_segment_version
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
-  - name: /config/china_mobile_icscf/version
-    type: 版本通知
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: ICSCF 区号表版本。另有 /config/chinamobile_icscf_areacode_version
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
-  - name: /config/max_sessions
-    type: 配置
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 最大会话数。key 缺失时初始化会空指针
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/DevHelp.java
-  - name: /config/audit_strategy_allow
-    type: 开关
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 是否在呼叫时查询 strategy-service。关闭时跳过策略
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/DevHelp.java
-  - name: /config/supported_codec
-    type: 配置
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: SDP 允许的编解码
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/DevHelp.java
-  - name: /config/db_oper_reject_ratio
-    type: 配置
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 话单异步入库并发拒绝比例
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/service/DbAsyncService.java
-  - name: /config/publish_rocketmq_thread_pool
-    type: 配置
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 话单 MQ 发布线程池
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/DevHelp.java
-  - name: /config/analyse_abnormal_bill/case1_switch
-    type: 开关
-    ttl: 无
-    writer: ops-platform
-    reader: vi-as
-    purpose: 异常话单分析 case1 到 case7，路径中的序号替换 1
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
-  - name: ETCD_CONFIG.config_key
-    type: 版本通知
-    ttl: 无
-    writer: qa-server
-    reader: qa-server
-    purpose: 客户、词包、话术、企业变更。值为时间戳。具体 key 路径由部署配置注入，待确认是否与 /config/version 相同
-    source: vi-assets/qa-server-master/utils/etcd.py
-  - name: ETCD_CONFIG.rule_key
-    type: 版本通知
-    ttl: 无
-    writer: qa-server
-    reader: qa-server
-    purpose: 质检规则变更
-    source: vi-assets/qa-server-master/utils/etcd.py
-  - name: ETCD_CONFIG.number_key
-    type: 版本通知
-    ttl: 无
-    writer: qa-server
-    reader: vi-as
-    purpose: 号码报备变更。qa-server 自己不监听。是否就是 /config/num/version 待确认
-    source: vi-assets/qa-server-master/apps/vi/views.py
-  - name: /vi-media/audio-capture
-    type: 配置
-    ttl: 无
-    writer: ops-platform
-    reader: vi-media
-    purpose: 放音文件名列表，变更时重载缓存
-    source: vi-assets/vi-media-master/internal/proxy/rtp.go
-  - name: /{cluster}/micro-registry/{app}/{instance}
-    type: 服务注册
-    ttl: 租约，媒体侧约 30 秒并续约
-    writer: vi-media, vi-merge, offline-merge
-    reader: vi-as, vi-media, vi-merge, offline-merge
-    purpose: 注册与发现。cluster 生产为 vii。应用名包括 com.cmic.vi.media、com.cmic.vi.merge、com.cmic.vi.offline、com.cmic.vi.mdownload
-    source: vi-assets/vi-media-master/internal/pkg/kv/registry/registry.go
-  - name: xdiscovery:{service}
-    type: 服务注册
-    ttl: 由 xdiscovery 库决定
-    writer: vi-as, vi-billcenter, vi-pusher
-    reader: vi-as, vi-billcenter, vi-pusher
-    purpose: Java 服务注册。服务名 com.cmic.vi.pusher、com.cmic.vi.billcenter，以及 httpproxy、com.cmic.vi.strategy、com.cmic.xsipproxy。key 前缀格式待确认
-    source: vi-assets/vi-as-master/src/main/java/com/cmic/service/MyRegistryService.java
+- name: /config/version
+  type: string
+  ttl: 无租约，永久 PUT
+  writer: 待确认（本仓库无写入）
+  reader: vi-as、vi-billcenter、vi-pusher
+  purpose: 企业/客户/渠道配置版本。变更后 vi-as 重载鉴权缓存，话单中心与推送重载企业客户缓存
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/num/version
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 号码报备版本，触发 AuthConfigService.reloadNumConf
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/china_mobile_icscf/version
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: ICSCF 表版本
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/chinamobile_icscf_areacode_version
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: ICSCF 区号版本，与上一个 key 同时存在
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/phone_segment/version
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 号段表版本
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/phone_segment_version
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 号段表版本的另一个 key，与 /config/phone_segment/version 并存
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/Intercept_international_caller_switch
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 国际主叫拦截开关
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/supported_codec
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 支持的编解码
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/max_sessions
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 最大会话数。缺失时 parseInt 会 NPE
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/analyse_abnormal_bill/case{1-7}_switch
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 异常话单分析开关，case1 到 case7
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/callee_limit_num_prefix
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 被叫限制前缀
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/audit_strategy_allow
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 是否调用策略服务
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/force_to_gd_icscf_city
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 强制走广东 ICSCF 的城市
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/publish_rocketmq_thread_pool
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: MQ 发布线程池参数
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/zhejiang_jiling_ip
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 名称疑似浙江相关地址列表。具体值不记录，含义待确认
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/cert_skipped_by_bind_time
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: 按绑定时间跳过实名，业务含义待确认
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /config/db_oper_reject_ratio
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-as
+  purpose: DB 并发拒绝比例
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/config/ConstantConf.java
+- name: /{clusterName}/micro-registry/{serviceName}/{instance}
+  type: json
+  ttl: 租约，keepalive 续约
+  writer: vi-media、vi-merge、offline-merge
+  reader: vi-media、vi-merge、offline-merge、vi-as
+  purpose: Go 服务注册。已知 serviceName：com.cmic.vi.merge、com.cmic.vi.offline、com.cmic.vi.mdownload。vi-media
+    的 appName 是部署占位，待确认。节点状态 UP/MAINTENANCE/OVERLOADED
+  source: vi-assets/vi-merge-master/internal/pkg/registry/registry.go
+- name: /vi-media/audio-capture
+  type: string
+  ttl: 无租约
+  writer: 待确认
+  reader: vi-media
+  purpose: 放音文件名，逗号分隔。前缀 watch，变化时逐个重载
+  source: vi-assets/vi-media-master/internal/proxy/rtp.go
+- name: com.cmic.vi.billcenter
+  type: service-registry
+  ttl: 由 xdiscovery 库决定，本仓库未写路径
+  writer: vi-billcenter
+  reader: 待确认
+  purpose: Java 服务注册名。同时 Watch /config/version，并 Watch 配置项 httpproxy-name 对应的代理服务
+  source: vi-assets/vi-billcenter-master/src/main/java/com/cmic/utils/Parameters.java
+- name: com.cmic.vi.pusher
+  type: service-registry
+  ttl: 由 xdiscovery 库决定
+  writer: vi-pusher
+  reader: 待确认
+  purpose: Java 服务注册名。Watch /config/version 与 httpproxy 服务名
+  source: vi-assets/vi-pusher-master/src/main/java/com/cmic/utils/Parameters.java
+- name: com.cmic.vi.media
+  type: service-name
+  ttl: 发现路径随注册实现
+  writer: vi-media（待确认注册名）
+  reader: vi-as
+  purpose: vi-as 录音节点发现名 RECORD_SERVICE_NAME
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/service/MyRegistryService.java
+- name: com.cmic.xsipproxy
+  type: service-name
+  ttl: 发现路径随注册实现
+  writer: 待确认
+  reader: vi-as
+  purpose: SIP 出呼代理
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/service/MyRegistryService.java
+- name: com.cmic.vi.strategy
+  type: service-name
+  ttl: 发现路径随注册实现
+  writer: strategy-service（外部）
+  reader: vi-as
+  purpose: 话务策略服务发现名
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/service/MyRegistryService.java
+- name: '{httpProxyName}'
+  type: service-name
+  ttl: 发现路径随注册实现
+  writer: 待确认
+  reader: vi-as、vi-billcenter、vi-pusher
+  purpose: HTTP 代理。vi-as 默认名 com.cmic.proxy，实际值来自配置 httpProxyName / httpproxy-name
+  source: vi-assets/vi-as-master/src/main/java/com/cmic/service/MyRegistryService.java
+- name: '{ETCD_CONFIG.config_key}'
+  type: string
+  ttl: 无租约，值为时间戳版本
+  writer: qa-server
+  reader: qa-server
+  purpose: 客户、词包、话术、企业变更。watch 后 load_cache
+  source: vi-assets/qa-server-master/utils/etcd.py
+- name: '{ETCD_CONFIG.rule_key}'
+  type: string
+  ttl: 无租约，值为时间戳版本
+  writer: qa-server
+  reader: qa-server
+  purpose: 规则变更。watch 后 load_qa_rule
+  source: vi-assets/qa-server-master/utils/etcd.py
+- name: '{ETCD_CONFIG.number_key}'
+  type: string
+  ttl: 无租约，值为时间戳版本
+  writer: qa-server
+  reader: 待确认
+  purpose: 号码变更时 PUT。当前 watch 列表未包含该 key
+  source: vi-assets/qa-server-master/apps/vi/views.py
