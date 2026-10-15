@@ -1,0 +1,186 @@
+meta:
+  id: table-vi-strategy-overview
+  title: vi_strategy 次要策略表与活跃号码
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/vi-cront-jobs-master/viStrategyDifareaHighFreq.py
+  - vi-assets/vi-cront-jobs-master/viStrategySilentCallBurst.py
+  - vi-assets/vi-cront-jobs-master/viStrategyIdleHighFreq.py
+  - vi-assets/vi-cront-jobs-master/viStrategyShortHighfreqBurst.py
+  - vi-assets/vi-cront-jobs-master/viStrategyShortLongcallBurst.py
+  - vi-assets/vi-cront-jobs-master/viStrategySilentDifareaLongcall.py
+  - vi-assets/vi-cront-jobs-master/viStrategyActivePhone.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: /tmp/vi/analysis/docs.md 第 6.3 节曾记策略 7–13 无表无脚本 vs vi-assets/vi-cront-jobs-master：外省/外市高频、沉默突增、闲时高频、短时高频突增、短时长突增、沉默外地长通话六张表和对应脚本已在仓库中，设计
+  DDL 仍只有前 6 张。'
+summary: vi_strategy 中脚本真实读取的表超过 8 张。前 6 张有 DDL 的表各自一文件。本文件合并无独立 DDL 的 6 张策略表和 active_phone_tab。列类型除能从
+  SQL 看出的名字外标为未知。主写入服务均为 vi-cront-jobs；策略配置表在本仓库只读，active_phone_tab 由 viStrategyActivePhone.py 写入。
+tables:
+- name: strategy_difarea_high_frequency
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 外省/外市大范围高频。effect_area 1 写 province-highfreq-{caller} 且 appendReason 26，2 写 city-highfreq-{caller}
+    且 appendReason 27。strategy_name 入明细时对应 9/10。
+  columns:
+  - id
+  - strategy_name
+  - customer_id
+  - effect_area
+  - effect_object
+  - stat_cycle_second
+  - call_threshold
+  - area_ratio_threshold
+  - control_valid_second
+  - control_command
+  - append_reason
+  - status
+  - effect_time
+  - create_time
+  - update_time
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据。列类型无 DDL，待确认。
+- name: strategy_silent_call_burst
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 沉默号码话务突增。Redis inactive-{caller}，appendReason 28。读取 active_phone_tab 判断沉默。无 is_main。
+  columns:
+  - id
+  - customer_id
+  - effect_object
+  - stat_cycle_second
+  - backtrack_cycle_day
+  - call_threshold
+  - control_valid_second
+  - control_command
+  - append_reason
+  - status
+  - effect_time
+  - update_time
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据。列类型待确认。
+- name: strategy_idle_high_frequency
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 闲时高频。Redis idle-highfreq-{caller}，appendReason 29。无 is_main。
+  columns:
+  - id
+  - customer_id
+  - stat_cycle_second
+  - call_threshold
+  - idle_time_range
+  - idle_ratio_threshold
+  - control_valid_second
+  - control_command
+  - append_reason
+  - status
+  - effect_time
+  - update_time
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据。列类型待确认。
+- name: strategy_short_highfreq_burst
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 短时高频突增。Redis short-highfreq-{caller}，appendReason 30。
+  columns:
+  - id
+  - strategy_name
+  - customer_id
+  - effect_object
+  - stat_cycle_second
+  - call_threshold
+  - backtrack_cycle_day
+  - avg_history_call_count
+  - control_valid_second
+  - control_command
+  - append_reason
+  - status
+  - effect_time
+  - update_time
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据。列类型待确认。
+- name: strategy_short_longcall_burst
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 短时长通话突增。Redis short-longcall-{caller}，appendReason 31。
+  columns:
+  - id
+  - strategy_name
+  - customer_id
+  - effect_object
+  - stat_cycle_second
+  - short_call_define_second
+  - total_call_threshold
+  - long_call_threshold
+  - control_valid_second
+  - control_command
+  - append_reason
+  - status
+  - effect_time
+  - update_time
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据。列类型待确认。
+- name: strategy_silent_difarea_longcall_burst
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 沉默号码外地长通话突增。Redis inactive-difarea-longcall-{caller}，appendReason 32。查询话单时使用 biz_report_province_id
+    或 biz_report_area_code，这两列不在话单 DDL 中。
+  columns:
+  - id
+  - strategy_name
+  - customer_id
+  - effect_area
+  - effect_object
+  - stat_cycle_second
+  - call_threshold
+  - cross_area_ratio_threshold
+  - backtrack_cycle_day
+  - long_call_def_second
+  - long_call_threshold
+  - control_valid_second
+  - control_command
+  - append_reason
+  - status
+  - effect_time
+  - update_time
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据。列类型待确认。
+- name: active_phone_tab
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 号码活跃时间。viStrategyActivePhone.py 按报备号码插入 biz_number、customer_id、online_time、active_time，沉默类策略读取。
+  columns:
+  - biz_number
+  - customer_id
+  - online_time
+  - active_time
+  readers:
+  - vi-cront-jobs
+  writers:
+  - vi-cront-jobs
+  retention: 脚本会统计 active_time 晚于 online_time 的行。清理策略待确认。
+notes:
+- apps/models.py 还声明 complaint_detail、strategy_detail、control_frequency_threshold、strategy_info、complaint_gzh_detail，挂在策略库
+  Base 上。仓库内策略脚本没有引用，不单独建表文件。是否遗留待确认。
+- effect_object 在新表脚本里同样过滤为 1，含义沿用「主叫号码」，企业级是否支持待确认。

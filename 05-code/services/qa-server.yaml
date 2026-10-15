@@ -1,0 +1,97 @@
+meta:
+  id: svc-qa-server
+  title: qa-server（质检任务入口与结果汇聚）
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-qa-server, qc-pipeline, qc-orchestration]
+  source_of_truth: [vi-assets/qa-server-master]
+
+service:
+  name: qa-server
+  description: 质检任务创建接口（鉴权、去重、落库、投递 scheduler）、消费 scheduler 结果并合并、回调 vi-billcenter、结果按分钟桶写 Redis 后批量入库 StarRocks（海山）、行业企业与号码报备管理
+  repository: qa-server
+  path: .
+  language: Python
+  framework: Flask + Gunicorn（MQ 消费线程与定时任务跑在 master 进程）、pika（RabbitMQ）、SQLAlchemy、pymongo、redis-py、etcd3
+  ports:
+    http: 7220
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: [vi-billcenter]
+  external: [strategy-service, xpusher, ops-platform]
+  middleware: [mysql, rabbitmq, redis, mongodb, starrocks, clickhouse, etcd]
+
+apis:
+  provides:
+    - { method: POST, path: /v1/task/customize, summary: 定制流程质检任务（vi-billcenter 生产实际调用） }
+    - { method: POST, path: /v2/task/create, summary: 专线质检任务（含分片 / 抽检路由；设计文档入口，生产未用） }
+    - { method: POST, path: /v1/task/create, summary: 内控质检任务 }
+    - { method: POST, path: /v1/front/create, summary: 普通质检任务 }
+    - { method: POST, path: /v1/text/check, summary: 文本质检 }
+    - { method: POST, path: /v1/keyword/create, summary: 新建关键词包 }
+    - { method: POST, path: /v1/keyword/update, summary: 修改关键词包 }
+    - { method: POST, path: /v1/script/create, summary: 新建话术 }
+    - { method: POST, path: /v1/script/update, summary: 修改话术 }
+    - { method: POST, path: /manage/info/reload, summary: 重载配置缓存 }
+    - { method: POST, path: /vi/enterprise/create, summary: 报备：开通行业语音质检企业 / 客户 }
+    - { method: POST, path: /vi/enterprise/modifySceneAndScript, summary: 报备：修改场景与话术 }
+    - { method: POST, path: /vi/enterprise/cancel, summary: 报备：注销 }
+    - { method: POST, path: /vi/number/addOrDel, summary: 报备：号码增删，异步回调 num_callback_url }
+  consumes:
+    - "vi-billcenter：POST /vibillcenter/subtask/callback、/vibillcenter/task/callback（失败进延迟队列重推）"
+    - "strategy-service：配置项 STRATEGY_CONFIG_URL，推送中高风险结果（接收方待确认）"
+
+events:
+  produce: [QcTaskSubmitted, QcRepushDelayed, NearRealtimeQcResult]
+  consume: [QcResultCallback, QcRepushDelayed, NearRealtimeBillReceived]
+
+tables:
+  - qa_task
+  - dcc_qa_task
+  - vi_cdr.qa_fail
+  - qa_detail
+  - qa_segment
+  - user_qc.customer_tab
+  - user_qc.company_tab
+  - user_qc.channel_tab
+  - user_qc.biz_num_auth
+  - user_qc.enterprise_scene
+  - dcc_conf.file_down_host
+# 代码中有引用（配置管理、关键词包、规则、BGE 等接口使用），未逐一核实字段，表结构未收录
+tables_other:
+  - auth_channel
+  - bge_classifier
+  - bge_rule
+  - bge_rule_item
+  - config_application
+  - config_company
+  - config_customer
+  - config_user
+  - dcc_qa_rule
+  - information_schema.loads
+  - mobile_tab
+  - qa_enterprise
+  - qa_prompt
+  - qa_regex
+  - qa_rule
+  - qa_script
+  - qa_script_group
+  - qa_strategy_config
+  - qa_subject
+  - qa_word_group
+  - qa_word_package
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/qc-result-delay.md

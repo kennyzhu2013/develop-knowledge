@@ -1,0 +1,200 @@
+meta:
+  id: table-user-qc-customer-tab
+  title: customer_tab 四级终端客户
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/vi/views.py
+  - vi-assets/vi-as-master/src/main/java/com/cmic/dao/UserQcDao.java
+  - vi-assets/vi-billcenter-master/src/main/java/com/cmic/utils/CustomerTabManager.java
+  - vi-assets/vi-cront-jobs-master/apps/general.py
+  related:
+  - data-overview
+table:
+  name: customer_tab
+  database: user_qc
+  service: qa-server
+  description: 四级终端客户。qa-server 行业开户写入，并从 qa_subject 复制质检模式与能力。vi-as 用 status、ability、额度与回调地址决定是否受理。vi-billcenter
+    用 app_id、scenario_id；vi-pusher 用 result_push_url 作为客户回调。vi-cront-jobs 用 status=1 且 is_call=1 过滤话务策略企业。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: name
+    type: varchar(100)
+    nullable: false
+    desc: 英文名，开户时取简称拼音首字母
+  - name: nickname
+    type: varchar(100)
+    nullable: false
+    desc: 简称，唯一
+  - name: fullname
+    type: varchar(100)
+    nullable: false
+    desc: 全称
+  - name: parent_id
+    type: int
+    nullable: false
+    desc: 父级 company_tab.id
+  - name: status
+    type: tinyint
+    nullable: false
+    desc: 1 启用，2 停用，3 注销，4 超用量停用。默认 3
+  - name: ability
+    type: tinyint
+    nullable: true
+    desc: 原子能力：离线 ASR 1，实时 ASR 2，质检 3
+  - name: ability_status
+    type: tinyint
+    nullable: true
+    desc: 能力状态，默认 1
+  - name: app_id
+    type: varchar(100)
+    nullable: false
+    desc: 终端 ID。报备接口里的 channelId 常指这个值，与 channel_id 不同
+  - name: platform_app_id
+    type: varchar(20)
+    nullable: true
+    desc: 能开平台 appId
+  - name: priority
+    type: int
+    nullable: false
+    desc: 离线质检优先级
+  - name: url
+    type: varchar(255)
+    nullable: true
+    desc: 质检复核回调地址
+  - name: result_push_url
+    type: varchar(255)
+    nullable: false
+    desc: 专线质检结果推送地址。空则 vi-pusher 直接把质检状态写成 3
+  - name: qa_type
+    type: tinyint
+    nullable: false
+    desc: 1 普通语音质检，2 专线质检。默认 1
+  - name: is_segment
+    type: tinyint
+    nullable: true
+    desc: 0 离线，1 实时，2 纯话务，3 行业语音质检
+  - name: qa_direction
+    type: tinyint
+    nullable: true
+    desc: 1 主叫，2 被叫，3 主被叫，4 业务订购方。默认 3
+  - name: rule_id
+    type: int
+    nullable: true
+    desc: 质检规则 id
+  - name: scenario_id
+    type: varchar(250)
+    nullable: true
+    desc: 场景 id，逗号分隔
+  - name: script_id
+    type: int
+    nullable: true
+    desc: 话术组 id
+  - name: is_call
+    type: tinyint
+    nullable: true
+    desc: 是否开启话务质检：1 是，0 否。默认 0
+  - name: customer_type
+    type: int
+    nullable: true
+    desc: 1 正式，2 试用，3 联调
+  - name: account_type
+    type: varchar(1)
+    nullable: true
+    desc: 1 外部客户，2 内部客户。与话单 account_type 不是同一枚举
+  - name: source
+    type: tinyint
+    nullable: true
+    desc: 1 能开，2 后台。行业开户代码写 3，注释未列 3，待确认
+  - name: bill_mode
+    type: tinyint
+    nullable: false
+    desc: 0 不批价，1 实时批价，2 定时批价。默认 1
+  - name: total_minutes
+    type: int
+    nullable: true
+    desc: 质检分钟总额
+  - name: used_minutes
+    type: float
+    nullable: true
+    desc: 已用分钟。本仓库定时任务不更新，待确认
+  - name: expire_time
+    type: datetime
+    nullable: true
+    desc: 失效时间
+  - name: is_reuse_asr
+    type: tinyint
+    nullable: true
+    desc: 1 复用历史 ASR，0 否
+  - name: stream_priority
+    type: int
+    nullable: true
+    desc: 实时分片优先级，默认 9
+  - name: call_duration_t1
+    type: int
+    nullable: true
+    desc: 短通话阈值秒，默认 10
+  - name: call_duration_t2
+    type: int
+    nullable: true
+    desc: 长通话分片起点秒，默认 60
+  - name: call_segment_t3
+    type: int
+    nullable: true
+    desc: 分片长度秒，默认 30
+  - name: sampling_ratio_p1
+    type: tinyint
+    nullable: true
+    desc: 短通话准实时抽检 0–100，默认 5
+  - name: need_random_sampling
+    type: tinyint
+    nullable: false
+    desc: 0 否，1 是。默认 0
+  - name: is_mid_qc
+    type: tinyint
+    nullable: false
+    desc: 中间号内控：1 是，0 否
+  - name: num_callback_url
+    type: varchar(255)
+    nullable: true
+    desc: 号码操作结果回调
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  - name: uk_nickname
+    columns:
+    - nickname
+    unique: true
+  readers:
+  - vi-as
+  - vi-billcenter
+  - vi-pusher
+  - qa-server
+  - vi-cront-jobs
+  writers:
+  - qa-server
+  retention: 配置数据。注销写 status，代码未见物理删除。
+notes:
+- 其余字段见 models.py CustomerTab：role_id_list、creator、comment、validity、sampling_ratio_p2、sampling_ratio_p3、sampling_ratio_p、random_sampling_ratio、caller_block_play_code、mode_status，以及客户经理姓名电话列。不要在文档或日志中写真实号码。
+- vi-billcenter 发起质检时不读取 status、expire_time、total_minutes。是否由 qa-server 拦截待确认。

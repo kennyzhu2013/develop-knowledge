@@ -1,0 +1,52 @@
+meta:
+  id: table-mid-auth-config-customer
+  title: config_customer 中间号客户
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/apps/service.py
+  - vi-assets/vi-cront-jobs-master/apps/general.py
+  related:
+  - data-overview
+table:
+  name: config_customer
+  database: mid_auth
+  service: qa-server
+  description: 中间号终端客户。qa-server 读 id、scene、name、record_suffix、is_customer_config 拼录音 URL。与 user_qc.customer_tab
+    不是同一张表。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 客户 id
+  - name: scene
+    type: varchar
+    nullable: true
+    desc: 报备场景
+  - name: name
+    type: varchar
+    nullable: true
+    desc: 名称
+  - name: record_suffix
+    type: varchar
+    nullable: true
+    desc: 录音后缀
+  - name: is_customer_config
+    type: int
+    nullable: true
+    desc: 是否按客户配置录音，取值待确认
+  indexes: []
+  readers:
+  - qa-server
+  - vi-cront-jobs
+  writers: []
+  retention: 中间号配置。其余列待确认。
+notes:
+- vi-cront-jobs 还读同库 auth_mobile（id、name）和 config_province（id、name、bossid）。qa-server 不用这两张表，不单建文件。

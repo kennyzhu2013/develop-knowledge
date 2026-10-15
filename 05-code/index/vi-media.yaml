@@ -1,0 +1,89 @@
+# 由 tools/gen_code_index.py 自动生成，请勿手改。
+meta:
+  id: index-vi-media
+  title: vi-media 代码索引（自动生成）
+  domain: code
+  kind: dynamic
+  audience:
+  - developer
+  - architect
+  owner: gen_code_index
+  status: active
+  last_verified: '2026-10-15'
+  generated_by: gen_code_index
+  source_repo: vi-assets/vi-media-master
+service: vi-media
+apis:
+- method: DELETE
+  path: /media/delete/{filename}
+  at: internal/router/media.go
+- method: GET
+  path: /media/delete/{filename}
+  at: internal/router/media.go
+- method: GET
+  path: /media/download/{filename}
+  at: internal/router/media.go
+- method: GET
+  path: /metrics
+  at: internal/app.go
+- method: GET
+  path: /som/cache/index/rewrite
+  at: internal/router/som.go
+- method: GET
+  path: /som/cache/media/elements
+  at: internal/router/som.go
+- method: GET
+  path: /som/cache/media/lookup
+  at: internal/router/som.go
+- method: GET
+  path: /som/cache/media/reload
+  at: internal/router/som.go
+- method: GET
+  path: /som/config/{config}
+  at: internal/router/som.go
+- method: GET
+  path: /som/service/{ops}
+  at: internal/router/som.go
+- method: POST
+  path: /call/media/dtmf
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/media/inspect
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/media/inspect/notice
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/media/play
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/media/stop
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/media/stream
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/session/create
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/session/pickup
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/session/stop
+  at: internal/router/proxy.go
+- method: POST
+  path: /call/session/update
+  at: internal/router/proxy.go
+- method: POST
+  path: /media/download/{filename}
+  at: internal/router/media.go
+outbound_calls: []
+mq:
+  consume: []
+  produce: []
+  configured:
+  - topic: TID_VI_MEDIA_RECORD_MERGE_NORMAL
+    key: topic
+    event: MediaRecordMergeRequested
+    at: config.prod/app.toml
+tables: []

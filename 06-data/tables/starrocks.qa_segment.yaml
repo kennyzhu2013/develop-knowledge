@@ -1,0 +1,152 @@
+meta:
+  id: table-starrocks-qa-segment
+  title: qa_segment 分片质检明细（海山）
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/sub_worker.py
+  related:
+  - data-overview
+table:
+  name: qa_segment
+  database: mid_strategy_segment
+  service: qa-server
+  description: 实时分片明细。Stream Load 引擎 mid_strategy_segment，Redis 列表 VIQASUBRESULT。失败兜底与状态查询走 mid_strategy_hs
+    上的 QaSegment。列与 qa_detail 同一套 QaDetailBase，模型注释写明结构一致。scheduler 不读本表。
+  columns:
+  - name: id
+    type: Int64
+    nullable: false
+    desc: 记录 id
+  - name: create_time
+    type: DateTime
+    nullable: false
+    desc: 创建时间
+  - name: finish_time
+    type: DateTime
+    nullable: false
+    desc: 完成时间
+  - name: task_id
+    type: String
+    nullable: false
+    desc: 任务 id
+  - name: data_id
+    type: String
+    nullable: false
+    desc: 录音或子任务 id
+  - name: app_id
+    type: String
+    nullable: false
+    desc: 渠道
+  - name: qa_customer_id
+    type: Int32
+    nullable: true
+    desc: 终端客户
+  - name: caller
+    type: String
+    nullable: false
+    desc: 主叫
+  - name: callee
+    type: String
+    nullable: false
+    desc: 被叫
+  - name: status
+    type: String
+    nullable: false
+    desc: 1 成功，0 失败，3 重试中
+  - name: qc_result
+    type: String
+    nullable: false
+    desc: 0 异常，1 正常
+  - name: risk_level
+    type: String
+    nullable: false
+    desc: 风险等级
+  - name: qa_type
+    type: Int8
+    nullable: false
+    desc: 1 普通，2 专线
+  - name: duration
+    type: Int64
+    nullable: false
+    desc: 录音时长
+  - name: url
+    type: String
+    nullable: false
+    desc: 录音地址
+  - name: content
+    type: String
+    nullable: false
+    desc: ASR 文本
+  - name: asr_info
+    type: String
+    nullable: false
+    desc: ASR 详情。scheduler 复用时读取
+  - name: process_id
+    type: String
+    nullable: false
+    desc: 调度流程
+  - name: rule_id
+    type: Int64
+    nullable: true
+    desc: 规则 id
+  - name: ctrl_action
+    type: String
+    nullable: false
+    desc: 专线管控指令，来自 qa_strategy_config.control_action
+  - name: audio_code
+    type: String
+    nullable: false
+    desc: 放音编码。control_action=2 时清空
+  - name: audio_direction
+    type: String
+    nullable: false
+    desc: 放音对象
+  - name: control_type
+    type: String
+    nullable: false
+    desc: 管控类型
+  - name: is_segment
+    type: Int64
+    nullable: true
+    desc: 是否分片
+  - name: segment_id
+    type: Int64
+    nullable: true
+    desc: 分片 id
+  - name: is_stream
+    type: Int64
+    nullable: true
+    desc: 是否实时流
+  - name: end_flag
+    type: Int64
+    nullable: true
+    desc: 1 结束片
+  - name: user_data
+    type: String
+    nullable: false
+    desc: 专线透传
+  - name: model_status
+    type: String
+    nullable: false
+    desc: 各模型执行情况
+  - name: error_message
+    type: String
+    nullable: false
+    desc: 错误信息
+  indexes: []
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 待确认。
+notes:
+- 扩展列与 qa_detail 相同：ext_num、mobile_id、channel_id、company_id、customer_id、eb_id、zjh_scene、复核字段。其余模型列见 QaDetailBase。

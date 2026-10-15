@@ -1,0 +1,43 @@
+meta:
+  id: table-mid-strategy-qa-word-group
+  title: qa_word_group 词群
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+table:
+  name: qa_word_group
+  database: mid_strategy
+  service: qa-server
+  description: 词群。content 为词包 id 列表。代码只读，无 ORM。本仓库无写入。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键，按用法推断
+  - name: app_id
+    type: varchar
+    nullable: false
+    desc: 应用 id
+  - name: name
+    type: varchar
+    nullable: false
+    desc: 名称
+  - name: content
+    type: varchar
+    nullable: false
+    desc: 词包 id，逗号分隔
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 待确认。

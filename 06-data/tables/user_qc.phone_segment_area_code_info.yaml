@@ -1,0 +1,67 @@
+meta:
+  id: table-user-qc-phone-segment-area-code-info
+  title: phone_segment_area_code_info 号段归属
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/vi-as-master/src/main/java/com/cmic/service/PhoneSegmentCacheService.java
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: /tmp/vi/docs/号段登记表DDL.txt：area_code 与 center_area_code 注释都是长途区号。vi-as 把 center_area_code
+  与 ICSCF 表的省会区号对照使用，注释未区分。'
+table:
+  name: phone_segment_area_code_info
+  database: user_qc
+  service: vi-as
+  description: 号段归属地。vi-as 按 id 分页 30000 加载 province、center_area_code、area_code、operator、number_segment、province_id，用
+    7 位号段解析主叫区号。本仓库无写入。刷新 key 为 /config/phone_segment/version 与 /config/phone_segment_version。
+  columns:
+  - name: id
+    type: bigint
+    nullable: false
+    desc: 主键
+  - name: province
+    type: varchar(50)
+    nullable: false
+    desc: 省或直辖市
+  - name: city
+    type: varchar(50)
+    nullable: false
+    desc: 城市。vi-as 查询未选取
+  - name: area_code
+    type: varchar(10)
+    nullable: false
+    desc: 长途区号
+  - name: center_area_code
+    type: varchar(10)
+    nullable: false
+    desc: DDL 注释同为长途区号。代码当作省会区号使用，待确认
+  - name: operator
+    type: varchar(4)
+    nullable: true
+    desc: 运营商，默认 0。枚举未定义
+  - name: number_segment
+    type: varchar(11)
+    nullable: false
+    desc: 号段，代码按 7 位使用
+  - name: province_id
+    type: tinyint
+    nullable: true
+    desc: 省 id
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - vi-as
+  writers: []
+  retention: 静态号段数据。初始化 SQL 不在本仓库。

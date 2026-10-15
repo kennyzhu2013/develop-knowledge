@@ -1,0 +1,44 @@
+# 由 tools/gen_code_index.py 自动生成，请勿手改。
+meta:
+  id: index-vi-merge
+  title: vi-merge 代码索引（自动生成）
+  domain: code
+  kind: dynamic
+  audience:
+  - developer
+  - architect
+  owner: gen_code_index
+  status: active
+  last_verified: '2026-10-15'
+  generated_by: gen_code_index
+  source_repo: vi-assets/vi-merge-master
+service: vi-merge
+apis:
+- method: GET
+  path: /metrics
+  at: internal/service/route/router.go
+- method: GET
+  path: /ops/config/{config}
+  at: internal/service/route/router.go
+- method: GET
+  path: /ops/configManifest
+  at: internal/service/route/router.go
+- method: GET
+  path: /ops/omu/{ops}
+  at: internal/service/route/router.go
+- method: GET
+  path: /v1/merge
+  at: internal/service/route/router.go
+- method: PUT
+  path: /ops/config/{config}
+  at: internal/service/route/router.go
+outbound_calls: []
+mq:
+  consume: []
+  produce: []
+  configured:
+  - topic: TID_VI_MERGE_MSG_BILL_NORMAL
+    key: topic
+    event: StreamSegmentMerged
+    at: config.prod/app.yaml
+tables: []

@@ -1,0 +1,31 @@
+meta:
+  id: table-user-qc-bge-rule
+  title: bge_rule BGE 主规则
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+table:
+  name: bge_rule
+  database: user_qc
+  service: qa-server
+  description: BGE 主规则。创建质检规则时按 id 检查存在性。代码 SELECT *，除 id 外列待确认。本仓库无写入。
+  columns:
+  - name: id
+    type: varchar
+    nullable: false
+    desc: 主规则 id，与 qa_rule.bge_rule_id 对应
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据。其余字段待确认。

@@ -1,0 +1,56 @@
+meta:
+  id: svc-vi-pusher
+  title: vi-pusher（质检结果对客推送）
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-vi-pusher, qc-pipeline]
+  source_of_truth: [vi-assets/vi-pusher-master]
+
+service:
+  name: vi-pusher
+  description: 消费质检结果消息，按 customer_tab.result_push_url 经 httpproxy 推送给客户，失败 60s 延时重试共 4 次，最终更新质检状态并把话单归档到日表
+  repository: vi-pusher
+  path: .
+  language: Java
+  framework: Spring Boot、rocketmq-v5-client-spring-boot-starter、RestTemplate、xdiscovery（ETCD）
+  etcd_name: com.cmic.vi.pusher
+  switches: "pusher.inspectionpusher 只控制主消费者；重试消费者始终运行"
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: []
+  external: [httpproxy, customer-system]
+  middleware: [mysql, rocketmq, etcd]
+
+apis:
+  provides: []
+  inactive:
+    - { method: POST, path: /vipusher/task/callback, summary: TestController 测试接口 }
+  consumes:
+    - "httpproxy：POST {node}/proxy，真实客户地址放在 X-Forwarded-For（06-data/api/result-push-to-customer.md）"
+
+events:
+  produce: [InspectionPushRetryDelayed]
+  consume: [InspectionResultReady, InspectionPushRetryDelayed]
+  inactive: [LegacyRecordPushDelay, LegacyBillPush, LegacyDccRecordPush]
+
+tables:
+  - vi_bill.bill_new
+  - vi_bill.bill_yyyy_MM_dd
+  - user_qc.company_tab
+  - user_qc.customer_tab
+  - dcc_conf.file_down_host
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/push-failure.md

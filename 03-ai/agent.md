@@ -1,36 +1,35 @@
 ---
 id: ai-agent
-title: 质检 / 反诈 Agent
+title: 质检编排（原 Agent 位）
 domain: ai
 kind: stable
 audience: [architect, developer, qa]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [ai-llm, ai-rag, fraud-overview, svc-fraud-agent]
+last_verified: 2026-10-15
+related: [ai-llm, ai-rag, fraud-overview, ai-model-catalog, qc-orchestration, svc-scheduler]
+source_of_truth:
+  - vi-assets/scheduler-master/sources/
+  - vi-assets/scheduler-master/src/main/java/com/cmic/engine/
 ---
 
-# 质检 / 反诈 Agent
+# 质检编排
 
-## 1. 工作流
+早期方案里的 groovy 规则引擎没有被 Java 加载。现行“Agent”就是 scheduler 的流程 XML：按事件顺序调用模型，用 SpEL 分支，用 `process` 动作结束子任务。
 
-```mermaid
-flowchart LR
-    A[转写文本] --> B[规则初筛]
-    B -->|疑似| C[RAG 检索相似案例]
-    C --> D[LLM 推理：匹配诈骗模式与风险行为]
-    D --> E[输出 FP / RB / 置信度 / 证据片段]
-    B -->|未命中| F[结束]
+## 1. 专线怎么跑
+
+```text
+initial → ASR → 脱敏 → 关键词与反诈
+       → 条件命中 → Qwen → RAG → 融通 → DeepSeek → 写 riskLevel → 结束
 ```
 
-## 2. 工具与输出
+实时分片在 dev 的 `zhuanxian_qc_2.xml` 里增加 `shard` 动作和 Redis 条件 `interruptShard`。
 
-| 项 | 说明 |
-| --- | --- |
-| 可用工具 | TODO |
-| 输出结构 | TODO：包含 pattern_id、behaviors、confidence、evidence |
-| 失败兜底 | TODO：超时 / 解析失败时的默认结论 |
+## 2. 和知识库反诈模型的关系
 
-## 3. 评测
+`02-call-qc/fraud/` 的 FP / RB / RULE 用来让人和 Agent 对齐“想检测什么”。运行时只认 XML、词包和 `qa_strategy_config`。新增一种诈骗手法时，两处都要改，见 Skill `add-fraud-pattern`。
 
-TODO：评测集位置、指标（准确率、召回率、误报率）、上线门槛。
+## 3. 不要随便开的能力
+
+管理接口可以上传 XML 并广播到所有实例。表达式在进程内求值。这不是一个带工具白名单的对话 Agent。

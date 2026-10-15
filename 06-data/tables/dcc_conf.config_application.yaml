@@ -1,0 +1,43 @@
+meta:
+  id: table-dcc-conf-config-application
+  title: config_application 700 应用
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+table:
+  name: config_application
+  database: dcc_conf
+  service: qa-server
+  description: 700 应用配置，用于拼录音 URL。本仓库只读。
+  columns:
+  - name: app_id
+    type: varchar
+    nullable: false
+    desc: 应用 id
+  - name: scenario
+    type: varchar
+    nullable: true
+    desc: 场景
+  - name: record_file_type
+    type: int
+    nullable: true
+    desc: 录音文件类型
+  - name: is_app_config
+    type: int
+    nullable: true
+    desc: 是否按应用配置，取值待确认
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据。其余列待确认。

@@ -7,7 +7,7 @@ audience: [developer, architect]
 owner: TODO
 status: draft
 last_verified: 2026-09-29
-related: [data-api-overview]
+related: [api-overview]
 ---
 
 # 接口开发规范

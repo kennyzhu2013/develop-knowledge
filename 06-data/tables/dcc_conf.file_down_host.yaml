@@ -1,0 +1,42 @@
+meta:
+  id: table-dcc-conf-file-down-host
+  title: file_down_host 录音下载主机
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/apps/service.py
+  - vi-assets/vi-billcenter-master/src/main/java/com/cmic/utils/FileDownHostManager.java
+  related:
+  - data-overview
+table:
+  name: file_down_host
+  database: dcc_conf
+  service: qa-server
+  description: 录音下载 host。qa-server、vi-billcenter 读 host_type=2 且按 location 取 host。vi-pusher 加载同条件数据，质检推送路径不使用。本仓库无写入。不要记录真实主机名。
+  columns:
+  - name: host_type
+    type: int
+    nullable: false
+    desc: 代码固定过滤 2
+  - name: location
+    type: int
+    nullable: false
+    desc: 节点。1 南，2 北
+  - name: host
+    type: varchar
+    nullable: false
+    desc: 下载主机。文档不记录具体值
+  indexes: []
+  readers:
+  - qa-server
+  - vi-billcenter
+  - vi-pusher
+  writers: []
+  retention: 配置数据。其余列待确认。

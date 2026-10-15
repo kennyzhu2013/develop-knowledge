@@ -1,0 +1,75 @@
+# 由 tools/gen_code_index.py 自动生成，请勿手改。
+meta:
+  id: index-vi-as
+  title: vi-as 代码索引（自动生成）
+  domain: code
+  kind: dynamic
+  audience:
+  - developer
+  - architect
+  owner: gen_code_index
+  status: active
+  last_verified: '2026-10-15'
+  generated_by: gen_code_index
+  source_repo: vi-assets/vi-as-master
+service: vi-as
+apis:
+- method: ANY
+  path: /changeStartMode
+  at: src/main/java/com/cmic/util/MyHTTPServer.java
+- method: ANY
+  path: /control
+  at: src/main/java/com/cmic/util/MyHTTPServer.java
+- method: ANY
+  path: /forcemediacodec
+  at: src/main/java/com/cmic/http/HTTPServer.java
+- method: ANY
+  path: /hook
+  at: src/main/java/com/cmic/http/HTTPServer.java
+- method: ANY
+  path: /media
+  at: src/main/java/com/cmic/http/HTTPServer.java
+- method: ANY
+  path: /metrics
+  at: src/main/java/com/cmic/http/HTTPServer.java
+- method: ANY
+  path: /ops
+  at: src/main/java/com/cmic/http/HTTPServer.java
+- method: ANY
+  path: /sms_callback
+  at: src/main/java/com/cmic/util/MyHTTPServer.java
+- method: ANY
+  path: /triggerSipStackAudit
+  at: src/main/java/com/cmic/util/MyHTTPServer.java
+outbound_calls: []
+mq:
+  consume: []
+  produce:
+  - topic: TID_VI_AS_EVENT_PUSH_PUSHER_NORMAL
+    event: CallEventNotified
+    at: src/main/java/com/cmic/service/EventRocketMQService.java
+  - topic: TID_VI_ONE_AS_BILL_PUSH_BILLCENTER_NORMAL
+    event: CallBillCompleted
+    at: src/main/java/com/cmic/service/BillRocketMQService.java
+  configured: []
+tables:
+- name: bill_fail
+  at: src/main/java/com/cmic/dao/BillDao.java
+- name: biz_num_auth
+  at: src/main/java/com/cmic/dao/UserQcDao.java
+- name: caller_prefer_media
+  at: src/main/java/com/cmic/dao/NumDao.java
+- name: channel_tab
+  at: src/main/java/com/cmic/dao/UserQcDao.java
+- name: check_section_no
+  at: src/main/java/com/cmic/dao/NumDao.java
+- name: chinamobile_icscf_ip
+  at: src/main/java/com/cmic/dao/UserQcDao.java
+- name: company_tab
+  at: src/main/java/com/cmic/dao/UserQcDao.java
+- name: customer_tab
+  at: src/main/java/com/cmic/dao/UserQcDao.java
+- name: phone_segment_area_code_info
+  at: src/main/java/com/cmic/service/PhoneSegmentCacheService.java
+- name: special_telb_rule
+  at: src/main/java/com/cmic/dao/NumDao.java

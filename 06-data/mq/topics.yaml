@@ -1,31 +1,165 @@
 meta:
   id: data-mq-topics
-  title: MQ Topic 清单
+  title: MQ Topic / 队列清单
   domain: data
   kind: dynamic
   audience: [all]
   owner: TODO
   status: draft
-  last_verified: 2026-09-29
+  last_verified: 2026-10-15
+  source_of_truth:
+    - vi-assets/vi-as-master/src/main/java/com/cmic/service/BillRocketMQService.java
+    - vi-assets/vi-media-master/config.prod/app.toml
+    - vi-assets/vi-merge-master/config.prod/app.yaml
+    - vi-assets/offline-merge-master/config.prod/app.yaml
+    - vi-assets/vi-billcenter-master/src/main/java/com/cmic/rocketmq/
+    - vi-assets/vi-pusher-master/src/main/java/com/cmic/rocketmq/
+    - vi-assets/scheduler-master/src/main/java/com/cmic/config/rabbitmq/MQBeanConfig.java
+    - vi-assets/qa-server-master/utils/mq.py
 
-# 生产者 / 消费者以 05-code/services/*.yaml 为准，这里补充运行属性。
+# 两套中间件：
+#   RocketMQ 5.x（gRPC 客户端，AK/SK 认证，Go 服务配置 namespace VI）——话单 / 媒体 / 推送链路
+#   RabbitMQ（scheduler 只启用"南向"集群）——qa-server ↔ scheduler ↔ AI 模型适配器
+# 所有 RocketMQ 消费者都无条件返回 SUCCESS（不依赖 MQ 重投），失败重试靠业务自发延时消息。
+# name 精确匹配；pattern 为正则（用于一组同构队列），供 tools/gen_code_index.py 把代码中的 Topic 映射到事件。
 topics:
-  - name: TODO_CALL_COMPLETED
-    event: CallCompleted
-    cluster: TODO
-    partitions: TODO
-    retention: TODO
-    consumer_groups: [TODO]
-    ordering: TODO   # 是否要求按 call_id 有序
-  - name: TODO_QC_COMPLETED
-    event: QCCompleted
-    cluster: TODO
-    partitions: TODO
-    retention: TODO
-    consumer_groups: [TODO]
-  - name: TODO_FRAUD_DETECTED
-    event: FraudDetected
-    cluster: TODO
-    partitions: TODO
-    retention: TODO
-    consumer_groups: [TODO]
+  # ------------------------------------------------------------------ RocketMQ
+  - name: TID_VI_ONE_AS_BILL_PUSH_BILLCENTER_NORMAL
+    event: CallBillCompleted
+    broker: rocketmq
+    type: normal
+    tag: BillPushMsg
+    key: billId
+    consumer_groups: [GID_VI_ONE_BILLCENTER_BILL]
+  - name: TID_VI_ONE_BILLCENTER_BILL_PROCESS_BILLCENTER_DELAY
+    event: BillProcessDelayed
+    broker: rocketmq
+    type: delay
+    delay: 5s
+    consumer_groups: [GID_VI_ONE_BILLCENTER_BILL_PROCESS]
+  - name: TID_VI_AS_EVENT_PUSH_PUSHER_NORMAL
+    event: CallEventNotified
+    broker: rocketmq
+    type: normal
+    status: inactive
+  - name: TID_VI_MEDIA_RECORD_MERGE_NORMAL
+    event: MediaRecordMergeRequested
+    broker: rocketmq
+    type: normal
+    namespace: VI
+    key: sessionId
+    consumer_groups: [GID_VI_MERGE_RECORD]
+  - name: TID_VI_MERGE_MSG_BILL_NORMAL
+    event: StreamSegmentMerged
+    broker: rocketmq
+    type: normal
+    namespace: VI
+    key: sessionId
+    consumer_groups: []
+    notes: 消费方待确认（vi-billcenter 订阅的是 TID_VI_ONE_MERGE_MSG_BILL_NORMAL）
+  - name: TID_VI_MERGE_BILL_RECORD_NORMAL
+    event: OfflineRecordMerged
+    broker: rocketmq
+    type: normal
+    namespace: VI
+    key: sessionId
+    consumer_groups: []
+    notes: 消费方待确认
+  - name: TID_DCC_MERGE_MSG_BILL_NORMAL
+    event: DccRecordMerged
+    broker: rocketmq
+    type: normal
+    consumer_groups: []
+  - name: TID_VI_ONE_MERGE_MSG_BILL_NORMAL
+    event: RecordMergeCompleted
+    broker: rocketmq
+    type: normal
+    key: callId
+    consumer_groups: [GID_VI_ONE_BILLCENTER_RECORD]
+    notes: CONFLICT 生产方配置中没有这个 Topic 名，需确认部署覆盖或 namespace 映射
+  - name: TID_VI_ONE_BILLCENTER_RECORD_PUSH_BILLCENTER_DELAY
+    event: RecordMergeRetryDelayed
+    broker: rocketmq
+    type: delay
+    delay: 60s
+    consumer_groups: [GID_VI_ONE_BILLCENTER_RECORD_DELAY]
+  - name: TID_VI_ONE_BILLCENTER_INSPECTION_PUSH_PUSHER_NORMAL
+    event: InspectionResultReady
+    broker: rocketmq
+    type: normal
+    key: listId
+    consumer_groups: [GID_VI_ONE_PUSHER_INSPECTION_PUSH]
+    notes: vi-pusher 仅在 pusher.inspectionpusher=true 时消费
+  - name: TID_VI_ONE_PUSHER_INSPECTION_PUSH_PUSHER_DELAY
+    event: InspectionPushRetryDelayed
+    broker: rocketmq
+    type: delay
+    delay: 60s
+    consumer_groups: [GID_VI_ONE_PUSHER_INSPECTION_DELAY]
+  - name: TID_VI_BILLCENTER_BILL_PUSH_PUSHER_NORMAL
+    event: LegacyBillPush
+    broker: rocketmq
+    status: inactive
+  - name: TID_VI_BILLCENTER_RECORD_PUSH_PUSHER_NORMAL
+    event: LegacyRecordPush
+    broker: rocketmq
+    status: inactive
+  - name: TID_VI_PUSHER_RECORD_PUSH_PUSHER_DELAY
+    event: LegacyRecordPushDelay
+    broker: rocketmq
+    status: inactive
+  - name: TID_DCC_BILLCENTER_RECORD_PUSH_PUSHER_NORMAL
+    event: LegacyDccRecordPush
+    broker: rocketmq
+    status: inactive
+
+  # ------------------------------------------------------------------ RabbitMQ：qa-server ↔ scheduler
+  - name: scheduler.task.queue
+    event: QcTaskSubmitted
+    broker: rabbitmq
+    exchange: "配置项 to_scheduler_exchange / to_scheduler_routing_key（qa-server）"
+    priority: x-max-priority=10
+    notes: scheduler 代码中未声明该队列，需上游或运维预建
+  - name: scheduler.callback.queue
+    event: QcResultCallback
+    broker: rabbitmq
+    exchange: scheduler.callback.exchange（topic），routing key topic.callback.key
+    notes: qa-server 以配置项 from_scheduler_queue 消费
+  - name: scheduler.task.repeat.queue
+    event: TaskCallbackDedup
+    broker: rabbitmq
+    exchange: scheduler.callback.exchange
+    notes: 仅 masterServer=true 的实例消费
+  - name: scheduler.task.lb-callback.queue
+    event: TaskCallbackDispatch
+    broker: rabbitmq
+    exchange: scheduler.callback.exchange
+  - name: scheduler.task.callback.queue
+    event: LegacyTaskCallback
+    broker: rabbitmq
+    status: inactive
+  - pattern: "<dynamic:.*>|scheduler\\.process\\.update\\..+"
+    event: ProcessUpdated
+    broker: rabbitmq
+    exchange: scheduler.process.update.exchange（fanout）
+    notes: 每个实例一个队列 scheduler.process.update.<service.instance.id>
+  - pattern: "scheduler\\..+\\.response(\\.fast)?\\.queue"
+    event: AiModelResponded
+    broker: rabbitmq
+    notes: 共 26 个模型响应队列，清单见 03-ai/model-catalog.md
+  - pattern: "scheduler\\.(?!task\\.|callback\\.).+\\.queue"
+    event: AiModelRequested
+    broker: rabbitmq
+    notes: 模型请求队列，清单见 03-ai/model-catalog.md
+  - name: repush_queue
+    event: QcRepushDelayed
+    broker: rabbitmq
+    exchange: "配置项 repush_exchange / repush_routing_key（延迟插件，header x-delay）"
+  - name: from_xpusher_queue
+    event: NearRealtimeBillReceived
+    broker: rabbitmq
+    notes: qa-server 的 Realtime_RabbitMq 连接；实际队列名为配置项
+  - name: to_xpusher_exchange
+    event: NearRealtimeQcResult
+    broker: rabbitmq
+    notes: 配置项名；实际 exchange 名待确认

@@ -1,0 +1,51 @@
+meta:
+  id: table-user-qc-bge-rule-item
+  title: bge_rule_item BGE 子规则
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+table:
+  name: bge_rule_item
+  database: user_qc
+  service: qa-server
+  description: BGE 子规则，按 rule_id 取出后交给调度。本仓库只读。
+  columns:
+  - name: rule_id
+    type: varchar
+    nullable: false
+    desc: bge_rule.id
+  - name: sub_rule_name
+    type: varchar
+    nullable: false
+    desc: 子规则名，送入调度字段 name
+  - name: priority
+    type: int
+    nullable: false
+    desc: 排序，查询 ORDER BY priority
+  - name: expression
+    type: varchar
+    nullable: false
+    desc: 表达式
+  - name: output_label
+    type: varchar
+    nullable: false
+    desc: 输出标签
+  - name: is_default
+    type: int
+    nullable: true
+    desc: 值为 1 时调度侧标记 isDefault
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据。类型由字段用法推断，待确认。

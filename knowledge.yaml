@@ -47,17 +47,17 @@ domains:
     name: 全局上下文
     paths: [00-context/]
   mid_number:
-    name: 中间号
+    name: 700 号码专线接入与话务管控（中间号域）
     paths: [01-mid-number/]
-    services: [mid-number-service]
+    services: [vi-as, vi-cront-jobs]
   call_qc:
-    name: 语音质检
+    name: 专线语音质检
     paths: [02-call-qc/]
-    services: [call-qc-service, fraud-agent]
+    services: [vi-media, vi-merge, offline-merge, vi-billcenter, vi-pusher, qa-server]
   ai:
-    name: AI 能力
+    name: AI 能力（质检编排与模型）
     paths: [03-ai/]
-    services: [asr-service, fraud-agent]
+    services: [scheduler]
   architecture:
     name: 系统架构
     paths: [04-architecture/]
@@ -81,13 +81,38 @@ domains:
     paths: [10-lessons/]
 
 # ---------------------------------------------------------------------------
-# 服务清单：每个服务在 05-code/services/<name>.yaml 有一份描述（尽量自动生成）。
+# 服务清单：每个服务在 05-code/services/<name>.yaml 有一份描述，源码在 vi-assets/<repo>-master/。
 # ---------------------------------------------------------------------------
 services:
-  - mid-number-service
-  - call-qc-service
-  - fraud-agent
-  - asr-service
+  - vi-as
+  - vi-media
+  - vi-merge
+  - offline-merge
+  - vi-billcenter
+  - vi-pusher
+  - qa-server
+  - scheduler
+  - vi-cront-jobs
+
+# ---------------------------------------------------------------------------
+# 外部系统：在链路上、但源码不在本知识库中。服务 YAML 的 dependencies.external 与架构图节点可以引用。
+# ---------------------------------------------------------------------------
+external_systems:
+  - { name: ims, desc: "IMS 核心网（S-CSCF / I-CSCF），专线呼叫来源与出呼路由" }
+  - { name: xproxy, desc: "7001 前缀统一入口（前缀 / 实体卡方案），把专线呼叫送到 vi-as" }
+  - { name: xsipproxy, desc: "SIP 出呼代理（ETCD com.cmic.xsipproxy，Route tag internal-as）" }
+  - { name: strategy-service, desc: "话务管控策略服务（ETCD com.cmic.vi.strategy，HTTP /strategy），推测读取 vi-cront-jobs 写的 Redis 管控 key" }
+  - { name: vi-codec, desc: "实时转码：收 vi-media WebSocket 帧，解码为 PCM 经 WebSocket 推给 vi-merge" }
+  - { name: vi-mdown, desc: "录音文件上传 / 下载服务（Xcache，ETCD vii/com.cmic.vi.mdownload），落 PFS" }
+  - { name: pfs, desc: "录音文件存储" }
+  - { name: cdn, desc: "放音文件服务（ETCD com.cmic.cdn），从 PFS 拉放音文件" }
+  - { name: tts, desc: "文本转语音（outbound 应用 /media/voice/tts）" }
+  - { name: httpproxy, desc: "对外 HTTP 代理（POST /proxy，目标在 X-Forwarded-For），vi-pusher 经它推送客户" }
+  - { name: customer-system, desc: "质检客户的结果接收系统（customer_tab.result_push_url）" }
+  - { name: ops-platform, desc: "对客质检统一运营平台：维护 user_qc 配置并递增 ETCD 版本 key（推断）" }
+  - { name: xpusher, desc: "准实时质检话单推送方（RabbitMQ from_xpusher_queue），不在现有源码中" }
+  - { name: asr, desc: "ASR / 九天 ASR 模型适配器（RabbitMQ scheduler.asr.*），按 fileUrl 拉录音" }
+  - { name: ai-models, desc: "其余模型适配器：关键词反诈、融通、BGE、重庆反诈 / agent、DeepSeek、通义千问、RAG、DIFY、声纹、鉴伪等" }
 
 # ---------------------------------------------------------------------------
 # 任务路由：关键词命中 → 最小知识集。by_role 是在通用 load 之外，该角色额外需要的内容。
@@ -99,93 +124,123 @@ router:
 
 routes:
   - id: number-700
-    keywords: ["700", "号码申请", "700号码"]
+    keywords: ["700", "7001", "700号码", "专线", "号码授权", "报备", "biz_num_auth"]
     load:
-      - 01-mid-number/700/
-      - 01-mid-number/business-flow.md
-      - 05-code/services/mid-number-service.yaml
+      - 01-mid-number/700/overview.md
+      - 01-mid-number/number-pool/overview.md
+      - 05-code/services/vi-as.yaml
     by_role:
-      developer: [06-data/api/, 08-development/api-development.md]
-      architect: [09-decisions/]
-      ops: [07-operation/runbooks/]
-    skills: [modify-api, impact-analysis]
-
-  - id: mid-number-binding
-    keywords: ["中间号", "隐私号", "绑定", "解绑", "axb", "axn", "小号"]
-    load:
-      - 01-mid-number/overview.md
-      - 01-mid-number/business-flow.md
-      - 05-code/services/mid-number-service.yaml
-    by_role:
-      developer: [06-data/api/, 06-data/tables/]
-      architect: [04-architecture/high-availability.md]
+      developer: [05-code/modules/vi-as.md, 06-data/api/reporting-interface-v1.0.1.md]
+      qa: [06-data/api/reporting-interface-v1.0.1.md]
+      architect: [00-context/system-boundary.md]
     skills: [understand-system, impact-analysis]
 
   - id: call-routing
-    keywords: ["呼叫路由", "路由", "呼转", "话路", "sip", "信令"]
+    keywords: ["vi-as", "sip", "信令", "invite", "b2bua", "呼叫", "接续", "603", "路由", "xproxy", "startmode"]
     load:
-      - 01-mid-number/call-routing/
-      - 01-mid-number/business-flow.md
+      - 01-mid-number/call-routing/overview.md
+      - 05-code/services/vi-as.yaml
+      - 10-lessons/pitfalls/known-issues-vi-as.md
     by_role:
-      ops: [07-operation/runbooks/]
-    skills: [understand-system]
+      developer: [05-code/modules/vi-as.md, 06-data/api/vi-as-to-vi-media.md]
+      ops: [07-operation/runbooks/, 07-operation/emergency/overview.md]
+    skills: [understand-system, troubleshoot]
 
-  - id: number-pool
-    keywords: ["号码池", "号池", "回收", "号码分配"]
+  - id: traffic-control
+    keywords: ["话务管控", "管控", "策略", "拦截", "高频", "长通话", "非工作时间", "append_reason", "vi-cront-jobs", "strategy"]
     load:
-      - 01-mid-number/number-pool/
-      - 05-code/services/mid-number-service.yaml
+      - 01-mid-number/traffic-control/
+      - 05-code/services/vi-cront-jobs.yaml
+    by_role:
+      developer: [05-code/modules/vi-cront-jobs.md, 06-data/redis/keys.yaml, 06-data/api/strategy-service.md]
+      ops: [07-operation/runbooks/]
     skills: [impact-analysis]
 
-  - id: overseas
-    keywords: ["出海", "海外", "国际", "overseas"]
+  - id: bill
+    keywords: ["话单", "bill", "bill_new", "cdr", "计费", "vi-bill", "vi-billcenter", "归档"]
     load:
-      - 01-mid-number/overseas/
-      - 04-architecture/security.md
-    skills: [architecture-review]
-
-  - id: charging
-    keywords: ["计费", "话单", "cdr", "账单", "结算"]
-    load:
-      - 01-mid-number/charging/
-      - 06-data/mq/
-    skills: [impact-analysis, modify-mq]
+      - 01-mid-number/charging/overview.md
+      - 05-code/services/vi-billcenter.yaml
+      - 06-data/tables/vi_bill.bill_new.yaml
+    by_role:
+      developer: [05-code/modules/vi-billcenter.md, 06-data/events/events.yaml]
+      ops: [07-operation/runbooks/]
+    skills: [impact-analysis, modify-database]
 
   - id: qc-pipeline
-    keywords: ["质检", "质检流程", "质检任务", "离线质检", "质检结果"]
+    keywords: ["质检", "质检流程", "质检任务", "准实时", "离线质检", "质检结果", "qa-server", "回调"]
     load:
       - 02-call-qc/overview.md
       - 02-call-qc/pipeline.md
-      - 05-code/services/call-qc-service.yaml
-      - 05-code/call-chain/
+      - 05-code/call-chain/qc-near-realtime.md
+      - 05-code/services/qa-server.yaml
+      - 05-code/services/vi-billcenter.yaml
     by_role:
-      ops: [07-operation/runbooks/, 10-lessons/]
-      developer: [06-data/mq/, 06-data/tables/]
+      developer: [05-code/modules/qa-server.md, 06-data/api/vi-billcenter-to-qa-server.md]
+      ops: [07-operation/runbooks/, 10-lessons/overview.md]
+      qa: [08-development/testing.md]
     skills: [understand-system, troubleshoot]
 
   - id: realtime-qc
-    keywords: ["实时质检", "实时", "流式", "分片"]
+    keywords: ["实时质检", "实时分片", "分片", "流式", "二期", "isstream", "segment"]
     load:
       - 02-call-qc/realtime-qc.md
-      - 03-ai/asr.md
-      - 09-decisions/
+      - 05-code/call-chain/qc-realtime.md
+      - 02-call-qc/media-chain.md
+      - 09-decisions/ADR-004-realtime-segment-qc.md
+    by_role:
+      developer: [06-data/api/media-stream-websocket.md, 05-code/modules/vi-merge.md]
     skills: [architecture-review, impact-analysis]
 
+  - id: media
+    keywords: ["媒体", "录音", "rtp", "合音", "vi-media", "vi-merge", "offline-merge", "vi-codec", "vi-mdown", "ffmpeg", "放音", "pfs"]
+    load:
+      - 02-call-qc/media-chain.md
+      - 05-code/services/vi-media.yaml
+      - 05-code/services/vi-merge.yaml
+      - 05-code/services/offline-merge.yaml
+    by_role:
+      developer: [05-code/modules/vi-media.md, 05-code/modules/offline-merge.md, 06-data/api/media-file-transfer.md]
+      ops: [07-operation/runbooks/]
+    skills: [understand-system, troubleshoot]
+
+  - id: push
+    keywords: ["推送", "vi-pusher", "httpproxy", "客户回调", "result_push_url", "对客"]
+    load:
+      - 06-data/api/result-push-to-customer.md
+      - 05-code/services/vi-pusher.yaml
+      - 10-lessons/pitfalls/known-issues-vi-pusher.md
+    by_role:
+      developer: [05-code/modules/vi-pusher.md]
+      ops: [07-operation/runbooks/]
+    skills: [modify-api, impact-analysis]
+
+  - id: orchestration
+    keywords: ["scheduler", "流程", "process", "编排", "xml", "spel", "子任务", "processid"]
+    load:
+      - 02-call-qc/orchestration.md
+      - 05-code/services/scheduler.yaml
+      - 03-ai/model-catalog.md
+    by_role:
+      developer: [05-code/modules/scheduler.md, 06-data/api/scheduler-admin-api.md]
+      ops: [07-operation/runbooks/]
+    skills: [understand-system, impact-analysis]
+
   - id: qc-rule
-    keywords: ["质检规则", "规则", "投诉", "骚扰", "语义质检", "规则引擎"]
+    keywords: ["质检规则", "规则", "关键词", "词包", "话术", "投诉", "骚扰", "prompt"]
     load:
       - 02-call-qc/rules.md
-      - 02-call-qc/pipeline.md
-      - 05-code/services/call-qc-service.yaml
+      - 02-call-qc/orchestration.md
+      - 06-data/api/qa-server-management-api.md
     by_role:
       qa: [08-development/testing.md]
     skills: [add-qc-rule]
 
   - id: fraud
-    keywords: ["反诈", "涉诈", "诈骗", "fraud", "风险行为", "话术"]
+    keywords: ["反诈", "涉诈", "诈骗", "fraud", "anti-fraud", "风险等级", "risklevel"]
     load:
       - 02-call-qc/fraud/
-      - 05-code/services/fraud-agent.yaml
+      - 03-ai/model-catalog.md
       - 03-ai/agent.md
     by_role:
       qa: [08-development/testing.md]
@@ -193,46 +248,67 @@ routes:
     skills: [add-fraud-pattern, add-qc-rule]
 
   - id: ai-model
-    keywords: ["asr", "转写", "大模型", "llm", "rag", "prompt", "模型", "推理"]
+    keywords: ["asr", "转写", "大模型", "llm", "rag", "deepseek", "qwen", "通义", "dify", "模型", "声纹"]
     load:
       - 03-ai/overview.md
+      - 03-ai/model-catalog.md
       - 03-ai/model-serving.md
     by_role:
       developer: [03-ai/llm.md, 03-ai/rag.md, 03-ai/asr.md]
-      ops: [03-ai/model-serving.md, 07-operation/monitoring.md]
+      ops: [07-operation/monitoring.md]
     skills: [understand-system]
 
   - id: api-change
-    keywords: ["接口", "api", "字段", "入参", "出参", "兼容"]
+    keywords: ["接口", "api", "字段", "入参", "出参", "兼容", "eopauth", "签名"]
     load:
       - 06-data/api/
       - 08-development/api-development.md
     skills: [modify-api, impact-analysis]
 
   - id: mq-change
-    keywords: ["mq", "消息", "topic", "kafka", "rocketmq", "消费", "事件"]
+    keywords: ["mq", "消息", "topic", "rocketmq", "rabbitmq", "队列", "消费", "事件", "tid_"]
     load:
-      - 06-data/mq/
-      - 06-data/events/
+      - 06-data/mq/topics.yaml
+      - 06-data/events/events.yaml
       - 05-code/dependency-map.yaml
     skills: [modify-mq, impact-analysis]
 
   - id: db-change
-    keywords: ["数据库", "表结构", "ddl", "索引", "mysql", "字段变更", "迁移"]
+    keywords: ["数据库", "表结构", "ddl", "索引", "mysql", "starrocks", "clickhouse", "mongodb", "redis", "字段变更", "迁移"]
     load:
+      - 06-data/overview.md
       - 06-data/tables/
       - 08-development/database-change.md
     skills: [modify-database, impact-analysis]
 
+  - id: config
+    keywords: ["配置", "etcd", "reload", "不生效", "版本号", "config"]
+    load:
+      - 06-data/etcd/keys.yaml
+      - 07-operation/deployment.md
+    by_role:
+      ops: [07-operation/runbooks/]
+    skills: [troubleshoot]
+
   - id: incident
-    keywords: ["告警", "故障", "延迟", "超时", "报错", "积压", "宕机", "排查", "异常"]
+    keywords: ["告警", "故障", "延迟", "超时", "报错", "积压", "宕机", "排查", "异常", "丢失"]
     load:
       - 07-operation/runbooks/
-      - 10-lessons/
+      - 10-lessons/overview.md
       - 07-operation/monitoring.md
     by_role:
       developer: [05-code/call-chain/]
     skills: [troubleshoot]
+
+  - id: known-issues
+    keywords: ["bug", "已知问题", "坑", "conflict", "冲突", "待确认", "死代码", "安全"]
+    load:
+      - 10-lessons/overview.md
+      - 10-lessons/pitfalls/doc-code-conflicts.md
+      - 10-lessons/pitfalls/open-questions.md
+    by_role:
+      architect: [10-lessons/pitfalls/security-risks.md]
+    skills: [kb-update]
 
   - id: release
     keywords: ["发布", "上线", "部署", "回滚", "灰度", "变更"]
@@ -249,8 +325,15 @@ routes:
       - 05-code/dependency-map.yaml
     skills: [architecture-review, impact-analysis]
 
+  - id: overseas
+    keywords: ["出海", "海外", "国际", "overseas"]
+    load:
+      - 01-mid-number/overseas/
+      - 04-architecture/security.md
+    skills: [architecture-review]
+
   - id: kb-maintenance
-    keywords: ["知识库", "文档", "adr", "复盘"]
+    keywords: ["知识库", "文档", "adr", "复盘", "代码索引", "drift"]
     load:
       - README.md
       - 99-agent/templates/

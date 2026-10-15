@@ -134,8 +134,8 @@ pip install -r tools/requirements.txt
 python tools/kb_route.py "任务描述" --role developer      # 召回该读的文件
 python tools/kb_lint.py                                     # 知识库校验（CI 同款）
 python tools/kb_lint.py --write-deps                        # 按 services/*.yaml 重新生成依赖图
-python tools/gen_code_index.py --repo ../call-qc --service call-qc-service           # 扫描代码，输出索引与 DRIFT
-python tools/gen_code_index.py --repo ../call-qc --service call-qc-service --write   # 写入 05-code/index/
+python tools/gen_code_index.py --all                                                # 按 repositories.yaml 扫描本地仓库
+python tools/gen_code_index.py --all --write                                         # 写入 05-code/index/
 python tools/sync_adapters.py                               # 修改 AGENTS.md 或 Skills 后重新生成各工具入口
 ```
 

@@ -1,0 +1,58 @@
+meta:
+  id: table-mid-strategy-qa-word-package
+  title: qa_word_package 词包
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/views.py
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+table:
+  name: qa_word_package
+  database: mid_strategy
+  service: qa-server
+  description: 词包。引擎 bind 名 mid_strategy，与 MySQL 库名是否一致依赖部署配置。qa-server 读写。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  - name: app_id
+    type: varchar(10)
+    nullable: false
+    desc: 质检应用
+  - name: name
+    type: varchar(100)
+    nullable: false
+    desc: 词包名
+  - name: words
+    type: varchar(2048)
+    nullable: false
+    desc: 词，逗号分隔。接口限制 200 词、单词短于 8 字
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 管理接口可删除词或话术。词包删除语义见接口，待确认是否物理删除。

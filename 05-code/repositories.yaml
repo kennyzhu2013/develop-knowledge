@@ -6,27 +6,64 @@ meta:
   audience: [all]
   owner: TODO
   status: draft
-  last_verified: 2026-09-29
+  last_verified: 2026-10-15
 
-# local_path：推荐的本地目录（相对本知识库仓库），多根工作区 / gen_code_index.py 使用。
+# local_path：相对本知识库仓库根目录。源码快照放在 vi-assets/ 下（2026-10 导入）。
+# url 待补充为真实 Git 地址；导入的是 master 分支快照。
 repositories:
-  - id: mid-number
+  - id: vi-as
     url: TODO
-    local_path: ../mid-number
-    default_branch: main
-    services: [mid-number-service]
-  - id: call-qc
+    local_path: vi-assets/vi-as-master
+    default_branch: master
+    language: Java 21 / Maven
+    services: [vi-as]
+  - id: vi-media
     url: TODO
-    local_path: ../call-qc
-    default_branch: main
-    services: [call-qc-service]
-  - id: fraud-agent
+    local_path: vi-assets/vi-media-master
+    default_branch: master
+    language: Go
+    services: [vi-media]
+  - id: vi-merge
     url: TODO
-    local_path: ../fraud-agent
-    default_branch: main
-    services: [fraud-agent]
-  - id: asr
+    local_path: vi-assets/vi-merge-master
+    default_branch: master
+    language: Go
+    services: [vi-merge]
+  - id: offline-merge
     url: TODO
-    local_path: ../asr
-    default_branch: main
-    services: [asr-service]
+    local_path: vi-assets/offline-merge-master
+    default_branch: master
+    language: Go
+    services: [offline-merge]
+  - id: vi-billcenter
+    url: TODO
+    local_path: vi-assets/vi-billcenter-master
+    default_branch: master
+    language: Java / Maven / Spring Boot
+    services: [vi-billcenter]
+  - id: vi-pusher
+    url: TODO
+    local_path: vi-assets/vi-pusher-master
+    default_branch: master
+    language: Java / Maven / Spring Boot
+    services: [vi-pusher]
+  - id: qa-server
+    url: TODO
+    local_path: vi-assets/qa-server-master
+    default_branch: master
+    language: Python / Flask
+    services: [qa-server]
+  - id: scheduler
+    url: TODO
+    local_path: vi-assets/scheduler-master
+    default_branch: master
+    language: Java / Maven / Spring Boot
+    services: [scheduler]
+  - id: vi-cront-jobs
+    url: TODO
+    local_path: vi-assets/vi-cront-jobs-master
+    default_branch: master
+    language: Python
+    services: [vi-cront-jobs]
+
+# 不在本次源码中、但在链路上的系统见 knowledge.yaml external_systems。

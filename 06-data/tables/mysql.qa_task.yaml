@@ -1,0 +1,87 @@
+meta:
+  id: table-mysql-qa-task
+  title: qa_task 质检任务
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: models.py QaTaskBase.status 注释只有 0 进行中、1 已完成 vs apps/service.py _mark_task_failed 写入 2。以代码为准：2
+  表示落库失败。'
+- 'CONFLICT: qa_task 与 qa_rule 一样，ORM 用 MYSQL_URI，规则缓存读 mid_strategy。任务查询在 task_consumer 用默认 session。是否同一库待确认。'
+table:
+  name: qa_task
+  database: MYSQL_URI
+  service: qa-server
+  description: 普通质检总任务。id 为字符串任务号。创建走默认 MYSQL_URI。结果消费按 business_type 区分本表与 dcc_qa_task。
+  columns:
+  - name: id
+    type: varchar(255)
+    nullable: false
+    desc: 任务 id
+  - name: rule_id
+    type: int
+    nullable: false
+    desc: qa_rule.id
+  - name: status
+    type: varchar(1)
+    nullable: false
+    desc: 0 进行中，1 已完成，2 失败（代码写入，列注释未列）
+  - name: completion_ratio
+    type: int
+    nullable: true
+    desc: 完成比例
+  - name: total
+    type: int
+    nullable: false
+    desc: 子任务总数
+  - name: error_num
+    type: int
+    nullable: false
+    desc: 失败子任务数
+  - name: avg_duration
+    type: int
+    nullable: false
+    desc: 近七日日均通话分钟
+  - name: qa_type
+    type: smallint
+    nullable: false
+    desc: 质检类型
+  - name: is_stream
+    type: smallint
+    nullable: true
+    desc: 0 否，1 实时流
+  - name: end_flag
+    type: smallint
+    nullable: true
+    desc: 0 否，1 结束片
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 待确认。无清理任务。
+notes:
+- 其余列为各模型的条数统计（asr_num、word_num、scene_num 等），见 QaTaskBase。

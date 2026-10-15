@@ -6,41 +6,50 @@ kind: stable
 audience: [all]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [qc-pipeline, qc-realtime, qc-rules, fraud-overview, svc-call-qc-service]
+last_verified: 2026-10-15
+related: [qc-pipeline, qc-realtime, qc-media-chain, qc-orchestration, qc-rules, fraud-overview, ctx-business-overview]
+source_of_truth:
+  - vi-assets/vi-as-master/
+  - vi-assets/qa-server-master/
+  - vi-assets/scheduler-master/
 ---
 
 # 语音质检总览
 
-## 1. 是什么
+本次代码资产是**专线质检**（vi）：把语音专线或 IMS 固话呼叫接入 700 平台，录音后做质检，并把正常/异常与风险等级推给客户。它复用 700 话路，不是一套独立的隐私号绑定平台。
 
-TODO：质检的对象（哪些通话、抽检还是全量）、目的（涉诈、投诉、骚扰、服务质量）、输出（风险事件、质检报告）。
-
-## 2. 质检类型
+## 1. 质检类型
 
 | 类型 | 触发 | 时效 | 文档 |
 | --- | --- | --- | --- |
-| 离线质检 | 通话结束 | TODO | `pipeline.md` |
-| 实时质检 | 通话中 | TODO | `realtime-qc.md` |
-| 语义质检 | 转写文本 | TODO | `rules.md` |
-| 涉诈识别 | 转写文本 + 通话特征 | TODO | `fraud/overview.md` |
-| 投诉 / 骚扰识别 | 转写文本 | TODO | `rules.md` |
+| 准实时（一期） | 通话结束且合音完成 | 通话后 | `pipeline.md` |
+| 实时分片（二期） | 通话中按片推流 | 通话中 | `realtime-qc.md` |
+| 抽检 / 不质检 | qa-server 按时长阈值与比例路由为 offline 或 no_ai | 视路由 | `orchestration.md` |
+| 话务管控 | 呼叫建立前查策略，与内容质检分开 | 接通前 | `01-mid-number/traffic-control/overview.md` |
 
-## 3. 判定方式
+## 2. 服务
 
-- **规则**：关键词、正则、组合条件，见 `rules.md`
-- **模型**：分类模型 / 通话大模型，见 `03-ai/llm.md`
-- **Agent**：多步推理 + RAG（反诈），见 `03-ai/agent.md`
+| 服务 | 职责 |
+| --- | --- |
+| vi-as | SIP B2BUA，号码授权、策略查询、驱动媒体、写话单 |
+| vi-media | RTP 锚定、分段录音、实时推流 |
+| vi-merge | 实时 PCM 合音与分片上传 |
+| offline-merge | 离线 ffmpeg 合音 |
+| vi-billcenter | 话单与合音结果关联，向 qa-server 建任务，接收回调 |
+| qa-server | 鉴权、任务、分片路由、结果入库与回调 |
+| scheduler | 按 XML 编排 ASR 与模型 |
+| vi-pusher | 经 httpproxy 把结果推给客户 |
+| vi-cront-jobs | 话务管控策略计算，写 Redis |
 
-多种判定结果的融合策略：TODO（例如规则命中直接判定，模型结果需要置信度阈值）。
+外部组件（源码不在本仓库）：xproxy、vi-codec、vi-mdown、strategy-service、httpproxy、asr、ai-models。服务契约见 `05-code/services/`。
 
-## 4. 服务
+## 3. 输出
 
-- `call-qc-service`：质检调度与规则执行
-- `fraud-agent`：涉诈识别 Agent
-- `asr-service`：转写
+- 通话话单：MySQL `vi_bill.bill_new`（及失败表、按日表）。
+- 质检明细：先写 Redis 分钟桶，再进入海山（StarRocks）`qa_detail` / `qa_segment`。
+- 客户推送：风险等级、正常/异常、录音位置。字段以 `06-data/api/result-push-to-customer.md` 为准。
+- 通话中打断/放音：设计有，vi-as 尚未消费质检回推的管控指令。
 
-## 5. 必须知道的约束
+## 4. 组织层级
 
-- 录音与转写文本属于敏感数据：TODO 留存期限、脱敏要求
-- TODO
+质检账户与号码按四级企业贯穿：`mobile_id`（省）、`channel_id`（市）、`company_id`（接入企业）、`customer_id`（终端客户），另有 `app_id` 标识能开侧质检主体。`channelId` 在报备接口里又被用作 app_id，和表字段 `channel_id` 不是同一个东西。

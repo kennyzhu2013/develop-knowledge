@@ -6,40 +6,37 @@ kind: stable
 audience: [all]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [mn-business-flow, svc-mid-number-service]
+last_verified: 2026-10-15
+related: [mn-business-flow, mn-700-overview, mn-call-routing-overview, mn-number-pool-overview, mn-charging-overview, mn-traffic-control-overview, ctx-business-overview]
+source_of_truth:
+  - vi-assets/vi-as-master/
+  - vi-assets/vi-billcenter-master/
+  - vi-assets/vi-cront-jobs-master/
 ---
 
 # 中间号总览
 
-## 1. 是什么
+本目录描述专线质检**复用 700 平台**的那一层：号码如何被识别、呼叫如何接续、话单如何留下、接通前如何管控。
 
-TODO：一段话说明中间号平台的定位、服务对象（如网约车、外卖、物流等行业客户）和核心价值。
+本次 9 个仓库没有实现隐私号绑定（AXB/AXN）、号码池冷却和出海。那些能力如果存在，在别的系统里，不在 `vi-assets/`。
 
-## 2. 子域
+## 1. 子域
 
-| 子域 | 目录 | 说明 |
+| 子域 | 目录 | 本次资产里的事实 |
 | --- | --- | --- |
-| 700 号码 | `700/` | TODO |
-| 出海 | `overseas/` | TODO |
-| 呼叫路由 | `call-routing/` | TODO |
-| 号码池 | `number-pool/` | TODO |
-| 计费 | `charging/` | TODO |
+| 700 号码 | `700/` | 7001X 前缀进入专线；15 位 700 仍走大网 |
+| 呼叫路由 | `call-routing/` | vi-as 作为 SIP B2BUA |
+| 号码报备 | `number-pool/` | `biz_num_auth`、号段、ICSCF。不是可分配号码池 |
+| 话单与计费 | `charging/` | `bill_new` 生命周期；批价在外部计费中心 |
+| 话务管控 | `traffic-control/` | vi-cront-jobs 写 Redis，呼叫时查 strategy-service |
+| 出海 | `overseas/` | 无实现 |
 
-## 3. 核心对象
+## 2. 核心对象
 
-| 对象 | 说明 | 存储 | 契约 |
-| --- | --- | --- | --- |
-| 绑定关系 | TODO | `06-data/tables/`（TODO 表名） | `06-data/api/` |
-| 中间号资源 | TODO | TODO | |
-| 话单 | TODO | TODO | `06-data/events/events.yaml` |
+| 对象 | 在哪里 | 说明 |
+| --- | --- | --- |
+| 报备号码 | `user_qc.biz_num_auth` | 匹配失败则拒绝或放通不质检，取决于接入方案 |
+| 话单 | `vi_bill.bill_new` | vi-as 插入，结束时更新并发给 vi-billcenter |
+| 策略命中 | Redis 管控 key | 不直接写话单；vi-as 把 strategy-service 返回的 appendReason 写入话单 |
 
-## 4. 服务
-
-- `mid-number-service`：见 `05-code/services/mid-number-service.yaml`
-- TODO：其它服务
-
-## 5. 必须知道的约束
-
-- TODO：例如“绑定关系有效期到期后号码进入冷却期，冷却期内不得再分配”
-- TODO：监管相关约束（实名、留存时长等）
+服务入口是 vi-as，见 `05-code/services/vi-as.yaml` 与 `05-code/modules/vi-as.md`。

@@ -1,0 +1,60 @@
+meta:
+  id: svc-vi-billcenter
+  title: vi-billcenter（话单中心，设计图中的 vi-bill）
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-vi-billcenter, mn-charging-overview, qc-pipeline]
+  source_of_truth: [vi-assets/vi-billcenter-master]
+
+service:
+  name: vi-billcenter
+  description: 编排质检：消费通话结束与合音结果消息，回写录音信息，经 SLB 调 qa-server 创建质检任务，接收质检回调并转发 vi-pusher
+  repository: vi-billcenter
+  path: .
+  language: Java
+  framework: Spring Boot、rocketmq-v5-client-spring-boot-starter、RestTemplate、xdiscovery（ETCD）
+  etcd_name: com.cmic.vi.billcenter
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: [qa-server]
+  external: [ops-platform]
+  middleware: [mysql, rocketmq, etcd]
+
+apis:
+  provides:
+    - { method: POST, path: /vibillcenter/subtask/callback, summary: qa-server 子任务回调；更新质检状态并转发 vi-pusher }
+    - { method: POST, path: /vibillcenter/task/callback, summary: qa-server 主任务回调 }
+    - { method: POST, path: /vibillcenter/task/recreate, summary: 手工重建发起失败的质检任务（无鉴权，默认时间窗口写死，需传日期） }
+  inactive:
+    - { method: POST, path: /vibillcenter/test, summary: 测试接口，会真实调用 qa-server，生产应关闭 }
+  consumes:
+    - "qa-server：POST 配置项 qc-server-create-url（生产为 /v1/task/customize），EOPAUTH 签名（06-data/api/vi-billcenter-to-qa-server.md）"
+
+events:
+  produce: [BillProcessDelayed, RecordMergeRetryDelayed, InspectionResultReady]
+  consume: [CallBillCompleted, BillProcessDelayed, RecordMergeCompleted, RecordMergeRetryDelayed]
+  inactive: [LegacyBillPush, LegacyRecordPush]
+
+tables:
+  - vi_bill.bill_new
+  - vi_bill.bill_yyyy_MM_dd
+  - user_qc.company_tab
+  - user_qc.customer_tab
+  - user_qc.enterprise_scene
+  - dcc_conf.file_down_host
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/bill-backlog.md
+  - 07-operation/runbooks/qc-result-delay.md

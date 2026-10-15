@@ -6,40 +6,65 @@ kind: stable
 audience: [all]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [ctx-system-boundary, arch-middleware, arch-storage, arch-ha, arch-security]
+last_verified: 2026-10-15
+related: [ctx-system-boundary, arch-middleware, arch-storage, arch-ha, arch-security, qc-overview, ADR-003, ADR-004]
+source_of_truth:
+  - 05-code/services/
+  - 00-context/design-docs/digest.md
 ---
 
 # 总体架构
 
-> 节点名必须与 `knowledge.yaml` 的 `services` 一致，`kb_lint.py` 会检查。
-> 真实依赖以 `05-code/dependency-map.yaml`（由代码生成）为准；本图表达的是**设计意图**。
+专线质检复用 700 大网把呼叫送进 vi-as，媒体链录音或分片，话单中心在合音结果到达后向 qa-server 建任务，scheduler 编排模型，vi-pusher 把结果推给客户。话务管控在接通前单独查询，不读取质检结果。
+
+真实依赖以 `05-code/dependency-map.yaml` 为准。下图只使用已登记的服务名和外部系统名。
 
 ```mermaid
 flowchart LR
-    Client[客户平台] -->|HTTP 绑定/解绑| mid-number-service
-    Switch[软交换] -->|路由查询| mid-number-service
-    mid-number-service -->|CallCompleted| MQ[(MQ)]
-    MQ --> call-qc-service
-    call-qc-service --> asr-service
-    call-qc-service --> fraud-agent
-    fraud-agent --> LLM[通话大模型]
-    fraud-agent --> RAG[(向量库)]
-    call-qc-service -->|QCCompleted / FraudDetected| MQ
-    MQ --> DataPlatform[数据平台]
+    xproxy --> vi-as
+    ims --> vi-as
+    vi-cront-jobs --> strategy-service
+    vi-as --> strategy-service
+    vi-as --> vi-media
+    vi-media --> vi-codec
+    vi-codec --> vi-merge
+    vi-media --> offline-merge
+    vi-merge --> vi-mdown
+    offline-merge --> vi-mdown
+    vi-as --> vi-billcenter
+    vi-merge --> vi-billcenter
+    offline-merge --> vi-billcenter
+    vi-billcenter --> qa-server
+    qa-server --> scheduler
+    scheduler --> asr
+    scheduler --> ai-models
+    qa-server --> vi-billcenter
+    vi-billcenter --> vi-pusher
+    vi-pusher --> httpproxy
+    httpproxy --> customer-system
+    vi-media --> cdn
+    vi-media --> tts
+    qa-server --> ops-platform
 ```
 
 ## 分层
 
 | 层 | 组件 | 说明 |
 | --- | --- | --- |
-| 接入层 | TODO：网关、软交换接口 | |
-| 业务层 | mid-number-service、call-qc-service | |
-| AI 层 | asr-service、fraud-agent、模型服务 | |
-| 中间件 | MQ、缓存、对象存储 | 见 `middleware.md` |
-| 数据层 | 业务库、数据平台 | 见 `storage.md` |
+| 接入 | xproxy、ims、vi-as | SIP B2BUA，UDP 5080 |
+| 媒体 | vi-media、vi-codec、vi-merge、offline-merge、vi-mdown、cdn、tts | 锚定、推流、合音、放音 |
+| 话单与推送 | vi-billcenter、vi-pusher、httpproxy | 建质检任务、推客户 |
+| 质检 | qa-server、scheduler、asr、ai-models | HTTP 建任务，RabbitMQ 编排 |
+| 管控 | vi-cront-jobs、strategy-service | 接通前拦截/放音/告警 |
+| 运营 | ops-platform | 报备、企业、门户；源码不在本次资产 |
 
-## 关键架构原则
+## 两期
 
-- TODO：例如“质检链路异常不得影响呼叫接续”
-- TODO：例如“服务间异步通信优先走 MQ，同步调用只用于在线查询”
+| 期 | 决策 | 图 |
+| --- | --- | --- |
+| 一期准实时 | `09-decisions/ADR-003-near-realtime-qc.md` | ![一期准实时](04-architecture/assets/phase1-near-realtime-qc.png) |
+| 二期实时分片 | `09-decisions/ADR-004-realtime-segment-qc.md` | ![二期实时分片](04-architecture/assets/phase2-realtime-segment-qc.png) |
+
+模块交互原图：![模块交互](04-architecture/assets/module-interaction.png)
+
+设计文档整理见 `00-context/design-docs/digest.md`。图中的 vi-bill 即本库的 vi-billcenter；dcc-media / dcc-merge 是一期图上的旧名，对应源码仓库是 vi-media、offline-merge。

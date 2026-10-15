@@ -1,0 +1,53 @@
+meta:
+  id: table-vi-bill-bill-fail
+  title: bill_fail 话单 MQ 发送失败
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/vi-as-master/src/main/java/com/cmic/dao/BillDao.java
+  related:
+  - data-overview
+table:
+  name: bill_fail
+  database: vi_bill
+  service: vi-as
+  description: vi-as 在通知 vi-billcenter 的 MQ 发送失败时插入。仓库内无 DDL、无读取方。
+  columns:
+  - name: id
+    type: varchar
+    nullable: false
+    desc: 话单 id
+  - name: company_id
+    type: int
+    nullable: false
+    desc: 三级企业 id
+  - name: location
+    type: int
+    nullable: false
+    desc: 节点
+  - name: reason
+    type: int
+    nullable: false
+    desc: 失败原因码，枚举待确认
+  - name: failcount
+    type: int
+    nullable: false
+    desc: 失败次数
+  - name: gmt_create
+    type: datetime
+    nullable: false
+    desc: 写入时间
+  indexes: []
+  readers: []
+  writers:
+  - vi-as
+  retention: 待确认。代码只 INSERT。
+notes:
+- 列类型由 BillDao.insertBillFial 的参数推断，无 DDL。方法名拼写为 Fial。

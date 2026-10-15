@@ -1,0 +1,70 @@
+meta:
+  id: svc-scheduler
+  title: scheduler（质检编排与 AI 模型调度）
+  domain: ai
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-scheduler, qc-orchestration, ai-model-catalog]
+  source_of_truth: [vi-assets/scheduler-master]
+
+service:
+  name: scheduler
+  description: 按 processId 加载流程 XML（事件—条件—动作 DSL），把子任务依次投递给 ASR、反诈、LLM、RAG 等模型适配器，结果写 MongoDB，子任务 / 主任务结束后经 RabbitMQ 回调 qa-server
+  repository: scheduler
+  path: .
+  language: Java
+  framework: Spring Boot、Spring AMQP（只启用南向 RabbitMQ）、MongoDB、SpEL 条件表达式
+  deploy: "bin/ bin.test/ bin.prod/ 的 start/stop/restart.sh；sources/dev|test|prod 放流程 XML"
+  cluster_role: "必须恰好一台 masterServer=true（负责回调去重与超时兜底）"
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: []
+  external: [ai-models]
+  middleware: [rabbitmq, mongodb, redis, starrocks]
+
+apis:
+  provides:
+    - { method: POST, path: /admin/process/create, summary: 上传流程 XML（无鉴权，SpEL 可执行任意代码） }
+    - { method: POST, path: /admin/process/update, summary: 更新流程 }
+    - { method: GET, path: /admin/process/query, summary: 查询流程 }
+    - { method: GET, path: /admin/process/history/query, summary: 流程历史 }
+    - { method: GET, path: "/admin/process/queryXml/{processId}", summary: 查询流程 XML }
+    - { method: POST, path: /admin/aiModel/create, summary: 登记 AI 模型 }
+    - { method: POST, path: /admin/aiModel/http/create, summary: 登记 HTTP 模型 }
+    - { method: POST, path: /admin/aiModel/http/update, summary: 修改 HTTP 模型 }
+    - { method: POST, path: "/admin/aiModel/http/delete/{model}", summary: 删除 HTTP 模型 }
+    - { method: GET, path: /admin/aiModel/http/query, summary: 查询 HTTP 模型（会返回模型凭证） }
+    - { method: POST, path: /admin/aiType/create, summary: 新建 AI 类型 }
+    - { method: POST, path: "/admin/aiType/update/{aiTypeId}", summary: 修改 AI 类型 }
+    - { method: POST, path: "/admin/aiType/delete/{aiTypeId}", summary: 删除 AI 类型 }
+    - { method: GET, path: /admin/aiType/query, summary: 查询 AI 类型 }
+    - { method: POST, path: /v1/front/task/create, summary: HTTP 方式创建任务 }
+    - { method: POST, path: /v1/front/event/create, summary: HTTP 方式注入事件 }
+
+events:
+  produce: [QcResultCallback, TaskCallbackDedup, TaskCallbackDispatch, ProcessUpdated, AiModelRequested]
+  consume: [QcTaskSubmitted, TaskCallbackDedup, TaskCallbackDispatch, ProcessUpdated, AiModelResponded]
+  inactive: [LegacyTaskCallback]
+
+tables:
+  - mongodb.task
+  - mongodb.sub_task
+  - mongodb.process
+  - qa_detail
+tables_inactive: [smart_walnuts_task, smart_walnuts_sub_task]
+
+slo:
+  task_timeout: "优先级 > 2 的任务 24h、其余 48h 由每小时兜底任务判超时（只扫最近 3 天）"
+
+runbooks:
+  - 07-operation/runbooks/scheduler-master-failover.md
+  - 07-operation/runbooks/qc-result-delay.md

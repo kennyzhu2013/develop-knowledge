@@ -1,0 +1,79 @@
+meta:
+  id: svc-vi-cront-jobs
+  title: vi-cront-jobs（话务管控策略定时脚本）
+  domain: mid_number
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-vi-cront-jobs]
+  source_of_truth: [vi-assets/vi-cront-jobs-master]
+
+service:
+  name: vi-cront-jobs
+  description: 每个 viStrategy*.py 是一个 cron 进程：读策略配置与当天话单，命中阈值的号码 / 企业写 Redis 管控 key，首次命中写 ClickHouse 管控明细，日终汇总；只写标记，不执行拦截
+  repository: vi-cront-jobs
+  path: .
+  language: Python
+  framework: SQLAlchemy、clickhouse_driver、redis-py；crontab 调度，环境由 CRONT_ENV 选择 config.<env>/
+  strategies: 见 01-mid-number/traffic-control/strategies.yaml
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: "单实例 cron（多实例会重复写 key / 明细）"
+
+dependencies:
+  services: []
+  external: [strategy-service]
+  middleware: [mysql, starrocks, clickhouse, redis]
+
+apis:
+  provides: []
+
+events:
+  produce: []
+  consume: []
+
+tables:
+  - vi_strategy.strategy_info
+  - vi_strategy.strategy_detail
+  - vi_strategy.strategy_business_range
+  - vi_strategy.strategy_business_threshold
+  - vi_strategy.strategy_difarea_high_frequency
+  - vi_strategy.strategy_high_frequency
+  - vi_strategy.strategy_idle_high_frequency
+  - vi_strategy.strategy_long_call
+  - vi_strategy.strategy_offwork_call
+  - vi_strategy.strategy_remote_range
+  - vi_strategy.strategy_short_highfreq_burst
+  - vi_strategy.strategy_short_longcall_burst
+  - vi_strategy.strategy_silent_call_burst
+  - vi_strategy.strategy_silent_difarea_longcall_burst
+  - vi_strategy.control_frequency_threshold
+  - active_phone_tab
+  - user_qc.customer_tab
+  - user_qc.biz_num_auth
+  - vi_bill.bill_yyyy_MM_dd
+  - mid_bussops.call_control_detail
+  - mid_bussops.call_control_statistics
+# 代码中有引用（统计 / 投诉 / 配置类脚本），未逐一核实用途，表结构未收录
+tables_other:
+  - auth_channel
+  - auth_mobile
+  - bbss_customer
+  - complaint_detail
+  - complaint_gzh_detail
+  - config_city
+  - config_company
+  - config_customer
+  - config_province
+  - config_scene_zl
+  - customer_id
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/traffic-control-misjudge.md

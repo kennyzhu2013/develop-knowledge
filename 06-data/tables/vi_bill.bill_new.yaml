@@ -1,0 +1,214 @@
+meta:
+  id: table-vi-bill-bill-new
+  title: bill_new 在途话单
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/vi-as-master/src/main/java/com/cmic/dao/BillNewDo.java
+  - vi-assets/vi-as-master/src/main/java/com/cmic/dao/BillDao.java
+  - vi-assets/vi-billcenter-master/src/main/java/com/cmic/dao/BillDao.java
+  - vi-assets/vi-pusher-master/src/main/java/com/cmic/dao/BillDao.java
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: /tmp/vi/docs/话单DDL.txt vs vi-assets/vi-as-master/src/main/java/com/cmic/dao/BillNewDo.java
+  与 vi-billcenter、vi-pusher 的 BillHistoryDao：代码读写 call_in_area_code、call_out_area_code，话单 DDL 无这两列。'
+- 'CONFLICT: /tmp/vi/docs/二期话单DDL.txt vs vi-assets/vi-as-master、vi-billcenter-master、vi-pusher-master：DDL
+  为 bill_new/bill_template 增加 quality_inspection_segment_result、quality_inspection_final_result、control_action，三个服务的实体与历史表
+  INSERT 均不包含这三列。'
+- 'CONFLICT: /tmp/vi/docs/话单DDL.txt append_reason 注释 1–6 vs vi-assets/vi-as-master/src/main/java/com/cmic/pojo/BillAppendReasonEnum.java
+  1–25 vs vi-cront-jobs Redis appendReason 5、13、20–32。'
+table:
+  name: bill_new
+  database: vi_bill
+  service: vi-as
+  description: 在途话单。vi-as 插入并在呼叫结束时更新；vi-billcenter 回写录音长度并发起质检后更新 quality_inspection_status，未接通或移表时 DELETE；vi-pusher
+    在质检结果推送结束后更新状态并 DELETE。引擎 InnoDB，utf8mb4。无应用内清理任务，接通后等不到合音的行会留在本表。
+  columns:
+  - name: id
+    type: varchar(32)
+    nullable: false
+    desc: 话单 id，即 callId。vi-as 插入时为 location+serverId 的雪花 id
+  - name: mobile_id
+    type: int
+    nullable: false
+    desc: 一级移动 id，默认 0
+  - name: channel_id
+    type: int
+    nullable: false
+    desc: 二级移动 id，默认 0
+  - name: company_id
+    type: int
+    nullable: false
+    desc: 三级企业 id，默认 0
+  - name: customer_id
+    type: int
+    nullable: false
+    desc: 四级终端客户 id，默认 0
+  - name: app_id
+    type: varchar(50)
+    nullable: false
+    desc: 四级客户 app_id
+  - name: account_type
+    type: tinyint
+    nullable: false
+    desc: 1 测试，2 联调，3 生产。由企业/客户 status 推导
+  - name: location
+    type: tinyint
+    nullable: false
+    desc: 呼叫触发节点，DDL 默认 -1。运行配置注释：1 南，2 北
+  - name: as_id
+    type: int
+    nullable: false
+    desc: AS 节点 id
+  - name: ms_id
+    type: int
+    nullable: false
+    desc: 媒体服务器 id。BaseController 更新恒为 0
+  - name: pfs_id
+    type: tinyint
+    nullable: false
+    desc: 存储节点 id，默认 0
+  - name: original_caller_number
+    type: varchar(50)
+    nullable: false
+    desc: 原始主叫
+  - name: caller_number
+    type: varchar(50)
+    nullable: false
+    desc: 处理后主叫
+  - name: original_callee_number
+    type: varchar(50)
+    nullable: false
+    desc: 原始被叫
+  - name: callee_number
+    type: varchar(50)
+    nullable: false
+    desc: 处理后被叫
+  - name: biz_number
+    type: varchar(50)
+    nullable: false
+    desc: 业务号码（700 号码）
+  - name: call_in_province_id
+    type: tinyint
+    nullable: false
+    desc: 呼叫触发省份 id
+  - name: call_out_province_id
+    type: tinyint
+    nullable: false
+    desc: 被叫省份 id
+  - name: call_in_700_area_code
+    type: varchar(10)
+    nullable: false
+    desc: 700 号码呼入区号，取原始 R-URI
+  - name: call_in_area_code
+    type: varchar
+    nullable: true
+    desc: 主叫区号。代码有列，话单 DDL 无此列
+  - name: call_out_area_code
+    type: varchar
+    nullable: true
+    desc: 被叫区号。代码有列，话单 DDL 无此列
+  - name: handle_start_time
+    type: datetime
+    nullable: true
+    desc: AS 收到 INVITE 的时间，截断到秒；决定日表后缀
+  - name: handle_end_time
+    type: datetime
+    nullable: true
+    desc: AS 处理结束时间
+  - name: call_forward_time
+    type: datetime
+    nullable: true
+    desc: 接续被叫时间
+  - name: call_start_time
+    type: datetime
+    nullable: true
+    desc: 通话开始时间
+  - name: call_end_time
+    type: datetime
+    nullable: true
+    desc: 通话结束时间
+  - name: call_duration_s
+    type: smallint
+    nullable: false
+    desc: 通话时长秒。有符号上限 32767
+  - name: call_duration_m
+    type: tinyint
+    nullable: false
+    desc: 通话时长分钟，向上取整最小 1。有符号上限 127
+  - name: file_duration
+    type: smallint
+    nullable: false
+    desc: 录音时长秒。vi-as 不写，由 vi-billcenter 回写
+  - name: finish_type
+    type: tinyint
+    nullable: false
+    desc: 结束发起方：0 平台，1 主叫，2 被叫
+  - name: finish_state
+    type: tinyint
+    nullable: false
+    desc: 话单状态。vi-as FinishState：0 需 ASR，1 主叫挂机，2 被叫挂机，3 主叫放弃，4 无应答，5 忙，6 不可及，7 路由失败，8 无绑定，9 绑定查询拦截，10
+      关机，11 停机，12 拒接，13 空号，14 呼叫转移，15 黑名单，16 参数异常，17 查询超时，18 查询失败，19 会话超时，20 拨测，21 无法识别，22 策略拦截，23 实名未验证，24
+      industrial id fail，99 其他
+  - name: append_reason
+    type: tinyint
+    nullable: false
+    desc: 附加原因。DDL 注释为 1–6；vi-as BillAppendReasonEnum 用 1–25；策略 Redis 另用 5、13、20–32。三套编码
+  - name: call_state
+    type: tinyint
+    nullable: false
+    desc: 1=180，2=200，3=181，4=re-INVITE，5=视频，6=ACK
+  - name: q850
+    type: smallint unsigned
+    nullable: false
+    desc: Q.850 cause
+  - name: record_type
+    type: tinyint
+    nullable: false
+    desc: 1 wav，2 mp3。vi-as 写入 1
+  - name: quality_inspection_status
+    type: tinyint
+    nullable: false
+    desc: 0 未发起，1 已发起，2 质检成功，-1 发起失败，-2 质检失败；3/-3 由 vi-pusher 写推送成功/失败
+  - name: is_bill_ok
+    type: tinyint
+    nullable: false
+    desc: 话单推送：0 未推送，1 成功，10 无需推送。遗留路径另有 2/-1，现网质检推送不写
+  - name: is_record_ok
+    type: tinyint
+    nullable: false
+    desc: 录音推送，枚举同 is_bill_ok。遗留
+  - name: quality_inspection_segment_result
+    type: tinyint
+    nullable: false
+    desc: 二期 DDL：0 异常，1 正常，默认 1。本仓库代码不读写
+  - name: quality_inspection_final_result
+    type: tinyint
+    nullable: false
+    desc: 二期 DDL：0 异常，1 正常，默认 1。本仓库代码不读写
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - vi-billcenter
+  - vi-pusher
+  writers:
+  - vi-as
+  - vi-billcenter
+  - vi-pusher
+  retention: 在途表，无 TTL。移入日表后删除。超时清理在本仓库未实现，待确认是否有库外脚本。
+notes:
+- 其余字段见 source_of_truth：left_file_length、right_file_length、first_resp_time、ring_time、media_l_direction、media_r_direction。media
+  direction：1 none，2 sendrecv，3 sendonly，4 recvonly，5 inactive，6 invalid。
+- control_action 在二期 DDL 中为 0 未设置，1 仅放音，2 仅阻断，3 先放音再阻断。代码未写该列。质检侧同名概念在 qa_strategy_config.control_action，编码待确认是否同一套。
+- vi-as 不写 quality_inspection_status，依赖列默认值 0。

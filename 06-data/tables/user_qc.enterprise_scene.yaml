@@ -1,0 +1,57 @@
+meta:
+  id: table-user-qc-enterprise-scene
+  title: enterprise_scene 场景词包
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+table:
+  name: enterprise_scene
+  database: user_qc
+  service: qa-server
+  description: 场景编码到词包 id。qa-server 开户时按 code 把场景映射成 word_package_id。vi-billcenter 全量读 id→word_package_id。本仓库无写入。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: code
+    type: varchar(10)
+    nullable: false
+    desc: 场景编码
+  - name: name
+    type: varchar(32)
+    nullable: false
+    desc: 场景名称
+  - name: word_package_id
+    type: varchar(100)
+    nullable: false
+    desc: 词包 id，英文逗号分隔
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  - vi-billcenter
+  writers: []
+  retention: 配置数据，无 TTL。
