@@ -1,0 +1,62 @@
+meta:
+  id: svc-offline-merge
+  title: offline-merge（离线整通合音）
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-offline-merge, qc-media-chain]
+  source_of_truth: [vi-assets/offline-merge-master]
+
+service:
+  name: offline-merge
+  description: 通话结束后消费 vi-media 合音消息，回源下载分段录音，用 ffmpeg 合成整通 mp3/wav 上传 vi-mdown 并发合音完成消息；兼容 DCC/700 录音模式
+  repository: offline-merge
+  path: .
+  language: Go
+  framework: Gin、RocketMQ v5 Go SDK、ffmpeg
+  ports:
+    http: "9036 / 9037"
+  etcd_name: com.cmic.vi.offline（集群 vii）
+  modes: "rocketMq.modeBiz：voiceInspection（生产）| dccMerge"
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: [vi-media]
+  external: [vi-mdown]
+  middleware: [rocketmq, etcd]
+
+apis:
+  provides:
+    - { method: GET, path: /health, summary: 健康检查 }
+    - { method: GET, path: /metrics, summary: Prometheus 指标 }
+    - { method: GET, path: /testmetrics, summary: 测试指标 }
+    - { method: GET, path: "/ops/config/{config}", summary: 运维：查看配置（无鉴权） }
+    - { method: PUT, path: "/ops/config/{config}", summary: 运维：修改配置（无鉴权） }
+    - { method: GET, path: /ops/configManifest, summary: 运维：配置清单 }
+    - { method: GET, path: "/ops/mq/{ops}", summary: 运维：MQ 启停 }
+    - { method: GET, path: "/ops/omu/{ops}", summary: 运维：服务状态 }
+  inactive:
+    - { method: GET, path: /v1/test, summary: 测试接口：用硬编码样例真实上传并发账单消息，生产应关闭 }
+    - { method: POST, path: /v1/test, summary: 同上 }
+  consumes:
+    - "vi-media：POST /media/download/<fileName>（回源下载分段文件，不重试）"
+    - "vi-mdown：POST /inner/media/upload/<fileName>?path=&volume=（不带 zone）"
+
+events:
+  produce: [OfflineRecordMerged, DccRecordMerged]
+  consume: [MediaRecordMergeRequested]
+
+tables: []
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/record-merge-backlog.md

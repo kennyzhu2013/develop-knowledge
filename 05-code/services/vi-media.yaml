@@ -1,0 +1,74 @@
+meta:
+  id: svc-vi-media
+  title: vi-media（媒体锚定与录音，Xcache）
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-vi-media, qc-media-chain]
+  source_of_truth: [vi-assets/vi-media-master]
+
+service:
+  name: vi-media
+  description: 接收并互转主被叫 RTP、分段录音落本地缓存、放音收号；二期把 RTP 帧经 WebSocket 推给 vi-codec 做实时分片质检，失败回退离线合音
+  repository: vi-media
+  path: .
+  language: Go
+  framework: Gin、gorilla/websocket、RocketMQ v5 Go SDK、etcd clientv3
+  ports:
+    rtp_udp: "10000–30000（每会话 4 个端口位，最多 5000 会话）"
+    http: "见 config.prod/app.toml"
+  etcd_name: TODO（自身注册名见 config.prod/app.toml）
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: [vi-as]
+  external: [vi-codec, cdn, tts]
+  middleware: [rocketmq, etcd]
+
+apis:
+  provides:
+    - { method: POST, path: /call/session/create, summary: 创建媒体会话，返回媒体 IP 与音视频端口 }
+    - { method: POST, path: /call/session/update, summary: 更新两侧 RTP 地址与编码 }
+    - { method: POST, path: /call/session/pickup, summary: 接通通知 }
+    - { method: POST, path: /call/session/stop, summary: 挂机通知，触发录音收尾与合音消息 }
+    - { method: POST, path: /call/media/play, summary: 放音（早媒体 / 通话中，本地或 cdn 文件、TTS） }
+    - { method: POST, path: /call/media/dtmf, summary: 收号 }
+    - { method: POST, path: /call/media/stop, summary: 停止放音 / 收号 }
+    - { method: POST, path: /call/media/inspect, summary: 二期实时质检：开始向 vi-codec 推流 }
+    - { method: POST, path: /call/media/inspect/notice, summary: vi-codec 回调异常 / 结束 }
+    - { method: POST, path: /call/media/stream, summary: 流控制 }
+    - { method: GET, path: "/media/download/{filename}", summary: 分段录音文件下载（offline-merge 回源） }
+    - { method: POST, path: "/media/download/{filename}", summary: 同上 }
+    - { method: GET, path: "/media/delete/{filename}", summary: 删除本地文件 }
+    - { method: DELETE, path: "/media/delete/{filename}", summary: 删除本地文件 }
+    - { method: GET, path: /metrics, summary: Prometheus 指标 }
+    - { method: GET, path: "/som/config/{config}", summary: 运维：配置刷新（传 2–5 会数组越界 panic） }
+    - { method: GET, path: "/som/service/{ops}", summary: 运维：服务状态 }
+    - { method: GET, path: /som/cache/media/reload, summary: 运维：放音缓存重载 }
+    - { method: GET, path: /som/cache/media/lookup, summary: 运维：放音缓存查询 }
+    - { method: GET, path: /som/cache/media/elements, summary: 运维：放音缓存列表 }
+    - { method: GET, path: /som/cache/index/rewrite, summary: 运维：缓存索引重写 }
+  callbacks:
+    - "vi-as：POST {callbackUrl}（即 vi-as /media），失败只记日志不重试"
+  other_protocols:
+    - "WebSocket（出）：vi-codec /media/stream，单向写，二进制帧 [kind][source][payload] + JSON 事件（06-data/api/media-stream-websocket.md）"
+
+events:
+  produce: [MediaRecordMergeRequested]
+  consume: []
+
+tables: []
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/record-merge-backlog.md
+  - 07-operation/runbooks/sip-call-failure.md

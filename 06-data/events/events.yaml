@@ -1,35 +1,371 @@
 meta:
   id: data-events
-  title: 业务事件清单
+  title: 业务事件（消息契约）清单
   domain: data
   kind: dynamic
   audience: [all]
   owner: TODO
   status: draft
-  last_verified: 2026-09-29
+  last_verified: 2026-10-15
+  source_of_truth:
+    - vi-assets/vi-as-master/src/main/java/com/cmic/service/BillCenterService.java
+    - vi-assets/vi-media-master/internal/pkg/broker/broker.go
+    - vi-assets/vi-merge-master/internal/pkg/broker/broker.go
+    - vi-assets/offline-merge-master/internal/pkg/broker/pub/
+    - vi-assets/vi-billcenter-master/src/main/java/com/cmic/rocketmq/
+    - vi-assets/vi-pusher-master/src/main/java/com/cmic/rocketmq/
+    - vi-assets/qa-server-master/apps/
+    - vi-assets/scheduler-master/src/main/java/com/cmic/config/rabbitmq/
 
-# 事件名是全局唯一标识，05-code/services/*.yaml 的 events.produce / consume 必须引用这里的名字。
+# 事件名全局唯一。05-code/services/*.yaml 的 events.produce / consume / inactive 必须引用这里的名字。
+# 承载的 Topic / 队列与运行属性见 06-data/mq/topics.yaml。
+# status: active（线上链路在用）| inactive（代码存在但未启用 / 死代码）| unknown（生产或消费方不在现有源码中）
+# 号码类字段均为明文，日志与知识库示例必须脱敏（700xxxx0001）。
 events:
-  - name: CallCompleted
-    topic: TODO_CALL_COMPLETED
-    description: 一通中间号通话结束
+  # ---------------------------------------------------------------- 话单链路（RocketMQ）
+  - name: CallBillCompleted
+    status: active
+    description: 一通专线呼叫结束且 vi-as 已把话单更新进 vi_bill.bill_new，通知话单中心
+    producer: vi-as
+    consumers: [vi-billcenter]
+    key: billId
+    tag: BillPushMsg
     fields:
-      - { name: call_id, type: string, desc: 通话唯一 ID }
-      - { name: middle_number, type: string, desc: 中间号（脱敏规则见 04-architecture/security.md） }
-      - { name: start_time, type: datetime, desc: 开始时间 }
-      - { name: duration_s, type: int, desc: 通话时长 }
-      - { name: record_url, type: string, desc: 录音地址 }
-  - name: QCCompleted
-    topic: TODO_QC_COMPLETED
-    description: 一通通话的质检完成
+      - { name: billId, type: string, desc: 18 位雪花话单 ID（也是媒体会话 sessionId），对应 bill_new.id }
+      - { name: isPickUP, type: bool, desc: 是否接通且已录音（callDurationS > 0 且主叫不是仅支持 G729） }
+      - { name: dbId, type: int, desc: 话单库编号；vi-billcenter 不使用 }
+    notes: 消息只带 ID，消费方需回表查完整话单。发送失败只写 bill_fail，无自动补发（见 10-lessons/pitfalls/known-issues-vi-as.md）。
+
+  - name: BillProcessDelayed
+    status: active
+    description: vi-billcenter 对未接通话单延时 5s 再归档（自发自收的延时消息）
+    producer: vi-billcenter
+    consumers: [vi-billcenter]
+    key: billId
     fields:
-      - { name: call_id, type: string, desc: 通话唯一 ID }
-      - { name: labels, type: list, desc: 命中的规则 / 标签 }
-      - { name: risk_level, type: string, desc: 风险等级 }
-  - name: FraudDetected
-    topic: TODO_FRAUD_DETECTED
-    description: 识别到涉诈风险
+      - { name: "(同 CallBillCompleted)", type: object, desc: 原通话消息体 }
+
+  - name: CallEventNotified
+    status: inactive
+    description: vi-as 发往 vi-pusher 的通话事件（初始化代码被注释，不生效）
+    producer: vi-as
+    consumers: []
     fields:
-      - { name: call_id, type: string, desc: 通话唯一 ID }
-      - { name: pattern_id, type: string, desc: 诈骗模式 ID（FP-*） }
-      - { name: confidence, type: float, desc: 置信度 }
+      - { name: callId, type: string, desc: 话单 ID }
+      - { name: event, type: string, desc: 事件类型 }
+      - { name: callerNo, type: string, desc: 主叫 }
+      - { name: calleeNo, type: string, desc: 被叫 }
+      - { name: secretNo, type: string, desc: 业务号码 }
+      - { name: timeStamp, type: long, desc: 时间戳 }
+      - { name: userId, type: string, desc: 用户 }
+      - { name: appId, type: string, desc: 应用 }
+
+  # ---------------------------------------------------------------- 媒体 / 合音链路（RocketMQ）
+  - name: MediaRecordMergeRequested
+    status: active
+    description: 通话结束，vi-media 通知离线合音（实时推流成功时不发；推流失败时带 fallback=true 照常发）
+    producer: vi-media
+    consumers: [offline-merge]
+    key: sessionId
+    fields:
+      - { name: sessionId, type: string, desc: 会话 ID（= billId） }
+      - { name: callerNum, type: string, desc: 主叫 }
+      - { name: calleeNum, type: string, desc: 被叫 }
+      - { name: userId, type: string, desc: vi-as 传入的 userId（appId 或 companyId） }
+      - { name: msId, type: string, desc: 媒体节点 appId }
+      - { name: address, type: string, desc: 媒体节点 host:port，offline-merge 据此回源下载分段文件 }
+      - { name: path, type: string, desc: 存储路径 }
+      - { name: volume, type: string, desc: 卷（vi-media 未赋值） }
+      - { name: callerAudioFile, type: string, desc: 主叫分段文件名，逗号分隔 }
+      - { name: calleeAudioFile, type: string, desc: 被叫分段文件名，逗号分隔 }
+      - { name: callerVideoFile, type: string, desc: 视频文件（vi-media 未赋值） }
+      - { name: calleeVideoFile, type: string, desc: 视频文件（vi-media 未赋值） }
+      - { name: earlyAudioFile, type: string, desc: 早媒体文件（vi-media 未赋值，DCC 模式使用） }
+      - { name: options, type: string, desc: "mergeConfig JSON 字符串：recordSuffix、separateLeg、reverseLeg、separateEarly、isRecord、bindId、mode、userData" }
+      - { name: config, type: string, desc: "viConfig JSON 字符串：source（1 主叫 / 2 被叫 / 3 双向）、userData" }
+      - { name: startTime, type: long, desc: 通话开始时间，代码发 unix 秒（设计文档写毫秒，offline-merge 两者都兼容） }
+      - { name: fallback, type: bool, desc: 实时推流失败降级标志 }
+      - { name: "rtp 统计字段", type: int, desc: 音视频 RTP / 通话中 RTP / 录音计数，透传给 DCC 消息 }
+    notes: CONFLICT 设计文档列有 pcmFormat、pcmSample，vi-media 代码不发送（offline-merge 能解析）。
+
+  - name: StreamSegmentMerged
+    status: unknown
+    description: 二期实时分片：vi-merge 每切出并上传一个分片就发一条（整通录音不发）
+    producer: vi-merge
+    consumers: []
+    key: sessionId
+    fields:
+      - { name: sessionId, type: string, desc: 会话 ID }
+      - { name: segmentId, type: int, desc: 分片序号，从 0 开始 }
+      - { name: callerNum, type: string, desc: 主叫（来自 X-Params） }
+      - { name: calleeNum, type: string, desc: 被叫 }
+      - { name: userId, type: string, desc: 用户 }
+      - { name: fileNode, type: string, desc: vi-mdown 节点 host:port（不带协议） }
+      - { name: endFlag, type: bool, desc: 是否最后一片 }
+      - { name: duration, type: float, desc: 截至当前的累计时长（不是单片时长） }
+      - { name: path, type: string, desc: "userId/yyyy-MM-dd/unix秒" }
+      - { name: fileName, type: string, desc: "Segment_<sessionId>_<segId>.wav" }
+      - { name: volume, type: string, desc: vi-mdown 返回的 PFS 根 }
+      - { name: suffix, type: string, desc: 固定 wav }
+      - { name: isStream, type: bool, desc: 固定 true }
+      - { name: uploadFlag, type: bool, desc: 上传成功（只有成功才发，恒为 true） }
+      - { name: userData, type: string, desc: 透传 }
+    notes: 现有源码中找不到消费方；vi-billcenter 订阅的是 TID_VI_ONE_MERGE_MSG_BILL_NORMAL（见 10-lessons/pitfalls/doc-code-conflicts.md）。
+
+  - name: OfflineRecordMerged
+    status: unknown
+    description: offline-merge（voiceInspection 模式）整通合音完成
+    producer: offline-merge
+    consumers: []
+    key: sessionId
+    fields:
+      - { name: sessionId, type: string, desc: 会话 ID }
+      - { name: segmentId, type: int, desc: 固定 0 }
+      - { name: callerNum, type: string, desc: 主叫 }
+      - { name: calleeNum, type: string, desc: 被叫 }
+      - { name: userId, type: string, desc: 用户 }
+      - { name: fileNode, type: string, desc: 实际上传的 vi-mdown 节点 host:port }
+      - { name: endFlag, type: bool, desc: 固定 true }
+      - { name: isStream, type: bool, desc: 固定 false }
+      - { name: duration, type: float, desc: 合音结果时长（秒） }
+      - { name: path, type: string, desc: 存储路径 }
+      - { name: volume, type: string, desc: 上传响应返回的卷 }
+      - { name: fileName, type: string, desc: "<sessionId>_<yyyyMMddHHmmss>.<suffix>" }
+      - { name: suffix, type: string, desc: mp3 或 wav }
+      - { name: userData, type: string, desc: 优先 config.userData，否则 options.userData }
+      - { name: fallback, type: bool, desc: 透传 }
+    notes: 没有"上传是否成功"字段，上传失败时照样发送。现有源码中找不到消费方。
+
+  - name: DccRecordMerged
+    status: unknown
+    description: offline-merge（dccMerge 模式，700/DCC 录音兼容）合音完成
+    producer: offline-merge
+    consumers: []
+    fields:
+      - { name: code, type: int, desc: 固定 0 }
+      - { name: callId, type: string, desc: 话单 ID（代码中从未赋值） }
+      - { name: fileName, type: string, desc: 合音文件名 }
+      - { name: leftFile, type: string, desc: 主叫腿文件 }
+      - { name: rightFile, type: string, desc: 被叫腿文件 }
+      - { name: serverId, type: string, desc: 消息 address }
+      - { name: fileDuration, type: int, desc: 时长（向上取整） }
+      - { name: fullDuration, type: int, desc: 全链路时长 }
+      - { name: earlyDuration, type: int, desc: 早媒体时长 }
+      - { name: acodec, type: string, desc: 输入编码 }
+      - { name: separateEarly, type: bool, desc: 是否分离早媒体 }
+      - { name: fullRecord, type: bool, desc: 是否全链路 }
+      - { name: bindIdm, type: string, desc: bindId（JSON tag 拼错为 bindIdm） }
+
+  - name: RecordMergeCompleted
+    status: active
+    description: 合音结果通知话单中心；vi-billcenter 收到后回写录音长度并发起质检
+    producer: unknown
+    consumers: [vi-billcenter]
+    key: callId
+    fields:
+      - { name: code, type: int, desc: 0 成功 / 1 失败 }
+      - { name: callId, type: string, desc: 话单 ID }
+      - { name: fileName, type: string, desc: 合音文件名（vi-billcenter 不使用，录音 URL 按话单字段重新拼） }
+      - { name: leftFileLength, type: long, desc: 左腿文件长度 }
+      - { name: rightFileLength, type: long, desc: 右腿文件长度 }
+      - { name: fileDuration, type: int, desc: 录音时长 }
+      - { name: serverId, type: string, desc: 媒体节点 }
+      - { name: separateEarly, type: bool, desc: 是否分离早媒体 }
+      - { name: fullRecord, type: bool, desc: 是否全链路 }
+    notes: 字段格式与 DccRecordMerged 一致。CONFLICT 订阅 Topic 名与 vi-merge / offline-merge 生产配置都不一致，生产方待确认。
+
+  - name: RecordMergeRetryDelayed
+    status: active
+    description: 合音结果先于话单到达时，vi-billcenter 延时 60s 重试（最多 3 次）
+    producer: vi-billcenter
+    consumers: [vi-billcenter]
+    key: callId
+    fields:
+      - { name: "(同 RecordMergeCompleted)", type: object, desc: 原合音消息 }
+      - { name: recordReceiveTimes, type: int, desc: 已重试次数 }
+
+  # ---------------------------------------------------------------- 质检结果推送（RocketMQ）
+  - name: InspectionResultReady
+    status: active
+    description: qa-server 子任务回调到达 vi-billcenter 后，原样转发给 vi-pusher 推送客户
+    producer: vi-billcenter
+    consumers: [vi-pusher]
+    key: listId
+    fields:
+      - { name: taskId, type: string, desc: 质检任务 ID }
+      - { name: listId, type: string, desc: 话单 ID }
+      - { name: status, type: string, desc: '"1" 成功，其它失败' }
+      - { name: errorMessage, type: string, desc: 失败原因 }
+      - { name: qcResult, type: string, desc: '"0" 异常 / "1" 正常' }
+      - { name: riskLevel, type: string, desc: 风险等级 }
+      - { name: data, type: string, desc: 透传 }
+      - { name: duration, type: int, desc: 录音时长 }
+      - { name: userData, type: object, desc: "callerNumber、calleeNumber、handleStartTime、companyId、customerId；异常时 qa-server 追加 ctrlAction、audioCode、audioDirection、callId" }
+      - { name: transcription, type: string, desc: ASR 转写文本（敏感） }
+      - { name: matchedWord, type: string, desc: 命中词 }
+      - { name: summary, type: string, desc: 摘要 }
+    notes: 字段集合以 qa-server apps/result_consumer.py 为准；vi-pusher 不做裁剪直接推给客户，改字段即改对客契约。
+
+  - name: InspectionPushRetryDelayed
+    status: active
+    description: vi-pusher 推送客户失败后 60s 延时重试（共 4 次尝试）
+    producer: vi-pusher
+    consumers: [vi-pusher]
+    key: listId
+    fields:
+      - { name: "(同 InspectionResultReady)", type: object, desc: 原回调体 }
+      - { name: retryTimes, type: int, desc: 已重试次数（推送给客户前去掉） }
+
+  - name: LegacyBillPush
+    status: inactive
+    description: 中间号时代的话单推送（BillSender 无调用方；vi-pusher 订阅注解已注释）
+    producer: vi-billcenter
+    consumers: []
+    fields:
+      - { name: "(Bill JSON)", type: object, desc: 整个话单 }
+
+  - name: LegacyRecordPush
+    status: inactive
+    description: 中间号时代的录音推送（RecordSender 调用点已注释）
+    producer: vi-billcenter
+    consumers: []
+    fields:
+      - { name: billId, type: string, desc: 话单 ID }
+      - { name: fileName, type: string, desc: 录音文件 }
+      - { name: msId, type: string, desc: 媒体节点 }
+      - { name: bindId, type: string, desc: 绑定 ID }
+
+  - name: LegacyRecordPushDelay
+    status: inactive
+    description: vi-pusher 遗留录音推送延时消息，仓库内无消费者
+    producer: vi-pusher
+    consumers: []
+    fields:
+      - { name: billId, type: string, desc: 纯文本话单 ID }
+
+  - name: LegacyDccRecordPush
+    status: inactive
+    description: DCC 录音推送（vi-pusher 订阅注解已注释）
+    producer: unknown
+    consumers: []
+    fields:
+      - { name: "(录音参数)", type: object, desc: 遗留 }
+
+  # ---------------------------------------------------------------- 质检编排（RabbitMQ）
+  - name: QcTaskSubmitted
+    status: active
+    description: qa-server 把一个质检任务（含若干子任务）投递给 scheduler
+    producer: qa-server
+    consumers: [scheduler]
+    fields:
+      - { name: requestId, type: string, desc: uuid1 }
+      - { name: processId, type: string, desc: 流程 ID，对应 MongoDB scheduler.process（vi-billcenter 传入的 customizedDetectionId） }
+      - { name: priority, type: string, desc: '"0"–"10"，同时作为 RabbitMQ 消息优先级' }
+      - { name: transactionId, type: long, desc: qa_task 主键 }
+      - { name: isStream, type: bool, desc: 是否实时分片 }
+      - { name: needTaskCallback, type: bool, desc: 是否需要主任务回调（准实时 / 重试时为 false） }
+      - { name: parameter, type: object, desc: 流程参数，进入 task.attributes（如 ragTopK、deepSeekPromptId、qwenPromptId、difyParam） }
+      - { name: data, type: list, desc: "子任务：dataId（必填）、url、text、location、reuse、isReverse、segmentId、endFlag、audioTag" }
+
+  - name: QcResultCallback
+    status: active
+    description: scheduler 回调 qa-server。type=1 子任务结果，type=2 主任务汇总
+    producer: scheduler
+    consumers: [qa-server]
+    fields:
+      - { name: type, type: int, desc: 1 子任务 / 2 主任务 }
+      - { name: transactionId, type: long, desc: 任务 ID }
+      - { name: dataId, type: string, desc: 子任务数据 ID（type=1） }
+      - { name: status, type: int, desc: 0 失败 / 1 成功 / 2 部分成功（type=1） }
+      - { name: errorMessage, type: string, desc: JSON 字符串，key 为模型名 }
+      - { name: models, type: list, desc: "name、code、message、status（0 未执行 / 1 失败 / 2 成功）、startTime、endTime、modelQcResult、riskLevel" }
+      - { name: "模型结果字段", type: mixed, desc: "asrText、audioDuration、keywordAnalysisResult、ragResults、rtFirstLabel、deepSeekResult 等（见 03-ai/model-catalog.md）" }
+      - { name: qcResult, type: string, desc: 由流程 XML 写入；finish=0 时去掉 }
+      - { name: riskLevel, type: string, desc: 由流程 XML 写入；finish=0 时去掉 }
+      - { name: finishRate, type: float, desc: 完成率（type=2） }
+      - { name: failCount, type: int, desc: 失败数（type=2） }
+      - { name: total, type: int, desc: 子任务总数（type=2） }
+
+  - name: TaskCallbackDedup
+    status: active
+    description: scheduler 内部：子任务全部回调完或超时兜底后，经 master 实例内存去重再分发
+    producer: scheduler
+    consumers: [scheduler]
+    fields:
+      - { name: taskId, type: string, desc: 任务 ID }
+      - { name: finish, type: int, desc: 1 全部回调完 / 2 超时兜底 }
+
+  - name: TaskCallbackDispatch
+    status: active
+    description: scheduler 内部：去重后的主任务回调分发（lb-callback 队列）
+    producer: scheduler
+    consumers: [scheduler]
+    fields:
+      - { name: taskId, type: string, desc: 任务 ID }
+      - { name: finish, type: int, desc: 同 TaskCallbackDedup }
+
+  - name: LegacyTaskCallback
+    status: inactive
+    description: scheduler 旧版主任务回调队列（调用 @Deprecated 方法，队列代码中未声明）
+    producer: unknown
+    consumers: [scheduler]
+    fields:
+      - { name: taskId, type: string, desc: 纯文本 }
+
+  - name: ProcessUpdated
+    status: active
+    description: 流程定义更新后广播给所有 scheduler 实例刷新缓存（fanout，每实例一个队列）
+    producer: scheduler
+    consumers: [scheduler]
+    fields:
+      - { name: processId, type: string, desc: 可能带首尾双引号 }
+
+  - name: AiModelRequested
+    status: active
+    description: scheduler 向某个 AI 模型适配器投递请求（ASR、反诈、LLM、RAG 等，每个模型一组 exchange / 队列）
+    producer: scheduler
+    consumers: []
+    fields:
+      - { name: jobId, type: string, desc: "<subTaskId>_<dataId>，响应必须原样带回" }
+      - { name: "模型请求体", type: object, desc: 各模型 DTO 见 03-ai/model-catalog.md }
+
+  - name: AiModelResponded
+    status: active
+    description: AI 模型适配器回传结果
+    producer: unknown
+    consumers: [scheduler]
+    fields:
+      - { name: code, type: string, desc: 0000 成功 }
+      - { name: message, type: string, desc: 说明 }
+      - { name: data, type: object, desc: "jobId + 模型字段" }
+
+  - name: QcRepushDelayed
+    status: active
+    description: qa-server 回调 vi-billcenter 失败后的延迟重推（RabbitMQ x-delay）
+    producer: qa-server
+    consumers: [qa-server]
+    fields:
+      - { name: destination, type: string, desc: '"mq" 或回调 URL' }
+      - { name: body, type: object, desc: 原回调体 }
+
+  - name: NearRealtimeBillReceived
+    status: unknown
+    description: 准实时质检：xpusher 推送话单给 qa-server（xpusher 不在现有源码中）
+    producer: unknown
+    consumers: [qa-server]
+    fields:
+      - { name: callid, type: string, desc: 话单 ID }
+      - { name: handleStartTime, type: string, desc: 处理开始时间 }
+      - { name: "caller / callee / location", type: string, desc: 话单字段 }
+      - { name: task_id, type: string, desc: 任务 ID }
+
+  - name: NearRealtimeQcResult
+    status: unknown
+    description: 准实时质检结果推回 xpusher
+    producer: qa-server
+    consumers: []
+    fields:
+      - { name: "(子任务结果)", type: object, desc: 同 QcResultCallback type=1 }
+      - { name: callId, type: string, desc: 话单 ID }
+      - { name: companyId, type: int, desc: 企业 }
+      - { name: customerId, type: int, desc: 客户 }

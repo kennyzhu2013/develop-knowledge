@@ -1,0 +1,111 @@
+meta:
+  id: table-vi-strategy-strategy-remote-range
+  title: strategy_remote_range 异地大范围外呼
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/vi-cront-jobs-master/viStrategyRemoteRange.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: /tmp/vi/docs/话务管控策略表DDL.txt vs vi-assets/vi-cront-jobs-master 对应脚本：DDL 无 is_main、app_id，脚本
+  SELECT 这两列；DDL 的 append_reason 注释为 1–8，Redis 写入的 appendReason 为 5、13、20–32，且脚本写死该值，不读表字段。'
+table:
+  name: strategy_remote_range
+  database: vi_strategy
+  service: vi-cront-jobs
+  description: 异地大范围外呼。vi-cront-jobs 只读配置，命中后写 Redis difarea-{caller}，appendReason 固定为 21。effect_object
+    默认 1，脚本要求 =1。 配置写入方不在本仓库，待确认。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 策略 ID，自增主键
+  - name: strategy_name
+    type: varchar(100)
+    nullable: false
+    desc: 策略名称，默认空串
+  - name: mobile_id
+    type: int
+    nullable: false
+    desc: 一级移动 id，默认 0
+  - name: channel_id
+    type: int
+    nullable: false
+    desc: 二级移动 id，默认 0
+  - name: company_id
+    type: int
+    nullable: false
+    desc: 三级企业 id，默认 0
+  - name: customer_id
+    type: int
+    nullable: false
+    desc: 四级企业 id，默认 0
+  - name: effect_object
+    type: tinyint
+    nullable: false
+    desc: 默认 1，主叫号码
+  - name: stat_cycle_second
+    type: int
+    nullable: false
+    desc: 默认 0。话务脚本不支持 0，策略会静默跳过
+  - name: area_threshold
+    type: int
+    nullable: false
+    desc: 城市离散度阈值，默认 100
+  - name: caller_home_city
+    type: varchar(100)
+    nullable: false
+    desc: 报备主叫归属城市
+  - name: control_valid_second
+    type: int
+    nullable: false
+    desc: Redis TTL 秒，大于 0 才设置
+  - name: control_command
+    type: tinyint
+    nullable: false
+    desc: 0 拦截，1 放通，2 告警。默认 2。明细表入库前会再映射
+  - name: append_reason
+    type: tinyint
+    nullable: false
+    desc: DDL 注释为 1–8。脚本写入 Redis 时不用该列，改写死 5/13/20–32
+  - name: status
+    type: tinyint
+    nullable: false
+    desc: 1 生效，0 停用。默认 1
+  - name: effect_time
+    type: datetime
+    nullable: true
+    desc: 生效时间。未到则脚本跳过
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  - name: is_main
+    type: tinyint
+    nullable: true
+    desc: 0 独立策略，1 主账户策略。六张老表的 SQL 都 SELECT 该列，DDL 没有
+  - name: app_id
+    type: varchar
+    nullable: true
+    desc: 主账户 app_id，供 is_main 展开。DDL 没有
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - vi-cront-jobs
+  writers: []
+  retention: 配置数据，无 TTL。停用由 status=0 表达，DisabledRedisClear 会删对应 Redis key。

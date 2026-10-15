@@ -6,51 +6,38 @@ kind: stable
 audience: [all]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [ctx-glossary, ctx-system-boundary, arch-overall]
+last_verified: 2026-10-15
+related: [ctx-glossary, ctx-system-boundary, arch-overall, qc-overview, mn-overview]
 ---
 
 # 业务总览
 
-> 填写指引：用 1 页讲清楚“这套系统为谁、解决什么问题、主链路是什么”。细节放到各域 overview。
+这套系统把语音专线和 IMS 固话呼叫接进 700 平台，完成接通前管控、录音质检，并把结果回推给客户。本次 `vi-assets/` 里的 9 个仓库是专线质检实现，不是一套独立的 AXB 隐私号绑定平台。
 
-## 1. 中间号
+## 1. 谁在用
 
-为通话双方提供隐私号码（中间号），实现号码隐藏、通话管控、话单留痕。主要子业务：
+| 对象 | 说明 |
+| --- | --- |
+| 终端企业 | 催收、金融、教育、房产、政务、电商、办公、快递、医疗等场景的外呼方 |
+| 四级组织 | 省 `mobile_id`、市 `channel_id`、接入企业 `company_id`、终端客户 `customer_id` |
+| 质检主体 | 能开侧 `app_id`。报备接口里的 `channelId` 常指这个 id，与表字段 `channel_id` 不同 |
+| 内部运营 | 对客质检门户与后台（ops-platform，源码不在本次资产） |
 
-| 子业务 | 一句话说明 | 文档 |
-| --- | --- | --- |
-| 号码绑定 | 真实号码与中间号建立绑定关系（AXB / AXN 等模式，按实际填写） | `01-mid-number/overview.md` |
-| 700 号码 | TODO：700 号段业务定位与差异 | `01-mid-number/700/overview.md` |
-| 出海 | TODO：面向海外的中间号能力 | `01-mid-number/overseas/overview.md` |
-| 呼叫路由 | 来电根据绑定关系路由到真实号码 | `01-mid-number/call-routing/overview.md` |
-| 号码池 | 中间号资源的分配、回收、冷却 | `01-mid-number/number-pool/overview.md` |
-| 计费 | 话单生成与计费结算 | `01-mid-number/charging/overview.md` |
-
-## 2. 语音质检
-
-对通话录音 / 实时语音进行转写和分析，识别涉诈、投诉、骚扰等风险。
-
-主链路（待核实）：
+## 2. 主链路
 
 ```text
-通话结束 / 实时语音流 → 录音获取 → ASR 转写 → 质检（规则 + 模型 + Agent） → 风险事件 → 处置 / 数据平台
+业务方给被叫加 7001X 前缀（总长不是 15 位）
+  → xproxy 把呼叫送给 vi-as
+  → 号码报备匹配、话务策略
+  → vi-media 锚定并录音（二期再分片推流）
+  → 合音上传
+  → vi-billcenter 向 qa-server 建任务
+  → scheduler 做 ASR 与反诈模型
+  → vi-pusher 把结果推给客户
 ```
 
-详见 `02-call-qc/overview.md`、`02-call-qc/pipeline.md`。
+准实时见 `02-call-qc/pipeline.md`，实时分片见 `02-call-qc/realtime-qc.md`，接通前管控见 `01-mid-number/traffic-control/overview.md`。
 
-## 3. 两套系统的连接点
+## 3. 和“中间号”目录的关系
 
-| 连接点 | 方向 | 载体 | 文档 |
-| --- | --- | --- | --- |
-| 通话完成事件 | 中间号 → 质检 | MQ（TODO：Topic 名） | `06-data/events/events.yaml` |
-| 录音文件 | 中间号 → 质检 | TODO：对象存储 / NFS | `04-architecture/storage.md` |
-| 风险处置 | 质检 → 中间号 | TODO：解绑 / 拦截接口 | `06-data/api/` |
-
-## 4. 关键指标
-
-| 指标 | 目标 | 说明 |
-| --- | --- | --- |
-| TODO：绑定接口 P99 | TODO | |
-| TODO：离线质检端到端时延 | TODO | |
-| TODO：实时质检首次风险发现时延 | TODO | |
+`01-mid-number/` 记录的是这次资产里**已经落地**的 700 接入、呼叫、号码报备和话单。传统隐私号的绑定/解绑、号码池冷却、出海，在这 9 个仓库和随附设计文档里没有实现，对应文档会明确写“不在本次资产”。

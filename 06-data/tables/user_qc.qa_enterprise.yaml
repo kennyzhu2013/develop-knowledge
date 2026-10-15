@@ -1,0 +1,72 @@
+meta:
+  id: table-user-qc-qa-enterprise
+  title: qa_enterprise 行业企业层级
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/vi/views.py
+  related:
+  - data-overview
+table:
+  name: qa_enterprise
+  database: user_qc
+  service: qa-server
+  description: 行业开户时校验省市区。level 2 且 region_id=市 id 对应渠道，level 3 对应企业。本仓库只读。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: region_id
+    type: varchar(10)
+    nullable: false
+    desc: 地区或企业唯一 ID
+  - name: fullname
+    type: varchar(100)
+    nullable: false
+    desc: 全称
+  - name: nickname
+    type: varchar(100)
+    nullable: false
+    desc: 简称
+  - name: parent_id
+    type: varchar(10)
+    nullable: true
+    desc: 父级 region_id
+  - name: app_id
+    type: varchar(10)
+    nullable: false
+    desc: 所属终端 ID
+  - name: level
+    type: varchar(1)
+    nullable: false
+    desc: 1 一级移动，2 二级，3 接入企业，4 终端
+  - name: main_id
+    type: int
+    nullable: false
+    desc: 该层级在 mobile/channel/company/customer 表中的主键
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据，无 TTL。

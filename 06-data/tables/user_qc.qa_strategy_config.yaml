@@ -1,0 +1,61 @@
+meta:
+  id: table-user-qc-qa-strategy-config
+  title: qa_strategy_config 专线管控动作
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/utils/cache.py
+  - vi-assets/qa-server-master/apps/result_consumer.py
+  related:
+  - data-overview
+table:
+  name: qa_strategy_config
+  database: user_qc
+  service: qa-server
+  description: 专线质检命中风险后的管控动作。qa-server 按 customer_id + risk_level + process_id + control_type 读取，status=1
+    才生效。control_action=2 时清空 audio_code。本仓库无写入，列集不完整。
+  columns:
+  - name: customer_id
+    type: int
+    nullable: false
+    desc: 终端客户 id。类型按调用方 int() 推断
+  - name: risk_level
+    type: int
+    nullable: false
+    desc: 风险等级，与调度结果 riskLevel 对齐
+  - name: process_id
+    type: varchar
+    nullable: false
+    desc: 调度流程 id
+  - name: control_type
+    type: int
+    nullable: false
+    desc: 查询键。调用默认 1，含义待确认
+  - name: status
+    type: int
+    nullable: false
+    desc: 1 才返回给调用方
+  - name: control_action
+    type: int
+    nullable: true
+    desc: 写入明细 ctrl_action。2 时不放音。与二期话单 control_action 是否同码待确认
+  - name: audio_code
+    type: varchar
+    nullable: true
+    desc: 放音编码
+  - name: audio_direction
+    type: int
+    nullable: true
+    desc: 放音对象
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据。完整列与索引待确认，代码为 SELECT *。

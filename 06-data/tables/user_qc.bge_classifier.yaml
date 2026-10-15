@@ -1,0 +1,31 @@
+meta:
+  id: table-user-qc-bge-classifier
+  title: bge_classifier BGE 分类器
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+table:
+  name: bge_classifier
+  database: user_qc
+  service: qa-server
+  description: 按 model_name 校验规则里配置的 BGE 模型是否存在。代码 SELECT *，只确认有行。其余列待确认。本仓库无写入。
+  columns:
+  - name: model_name
+    type: varchar
+    nullable: false
+    desc: 模型名，规则 bge_classifiers 按逗号拆开后逐个查询
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据。其余字段见线上表，代码未列举。

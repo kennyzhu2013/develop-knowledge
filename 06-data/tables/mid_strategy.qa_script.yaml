@@ -1,0 +1,62 @@
+meta:
+  id: table-mid-strategy-qa-script
+  title: qa_script 话术
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/views.py
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+table:
+  name: qa_script
+  database: mid_strategy
+  service: qa-server
+  description: 话术。引擎 bind 名 mid_strategy，与 MySQL 库名是否一致依赖部署配置。qa-server 读写。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  - name: app_id
+    type: varchar(10)
+    nullable: false
+    desc: 质检应用
+  - name: group_id
+    type: int
+    nullable: false
+    desc: qa_script_group.id
+  - name: name
+    type: varchar(100)
+    nullable: false
+    desc: 话术名
+  - name: script
+    type: varchar(2048)
+    nullable: false
+    desc: 话术文本
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 管理接口可删除词或话术。词包删除语义见接口，待确认是否物理删除。

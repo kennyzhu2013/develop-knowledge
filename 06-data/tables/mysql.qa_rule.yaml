@@ -1,0 +1,152 @@
+meta:
+  id: table-mysql-qa-rule
+  title: qa_rule 质检规则
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/utils/cache.py
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: vi-assets/qa-server-master/apps/service.py 的 session_scope() 把 qa_rule 写到默认 MYSQL_URI vs
+  utils/cache.py load_qa_rule 从 bind mid_strategy 读取 qa_rule。仓库无 config.yaml，两处是否同一库待确认。'
+table:
+  name: qa_rule
+  database: MYSQL_URI
+  service: qa-server
+  description: 普通质检规则。ORM 走默认数据源 MYSQL_URI，库名由部署注入，代码里没有字面库名。缓存加载却指定引擎 mid_strategy。行业开户会按 qa_subject.rule_id
+    克隆一行。status 列注释默认 0，业务取值 1/2/3。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 自增主键
+  - name: app_id
+    type: varchar(10)
+    nullable: false
+    desc: 质检账户 id
+  - name: name
+    type: varchar(255)
+    nullable: false
+    desc: 规则名称
+  - name: qa_mobile_id
+    type: int
+    nullable: true
+    desc: 质检账户一级移动
+  - name: qa_channel_id
+    type: int
+    nullable: true
+    desc: 质检账户二级
+  - name: qa_company_id
+    type: int
+    nullable: true
+    desc: 质检账户企业
+  - name: qa_customer_id
+    type: int
+    nullable: true
+    desc: 质检账户终端
+  - name: process_id
+    type: varchar(100)
+    nullable: false
+    desc: 调度流程 id
+  - name: status
+    type: varchar(1)
+    nullable: false
+    desc: 1 正常，2 暂停，3 取消。列默认 0，创建时代码写 1
+  - name: priority
+    type: varchar(10)
+    nullable: false
+    desc: 0–10
+  - name: strategy_type
+    type: varchar(10)
+    nullable: false
+    desc: 质检策略
+  - name: word_package_id
+    type: varchar(255)
+    nullable: false
+    desc: 词包 id，最多 5 个逗号分隔
+  - name: script_id
+    type: varchar(255)
+    nullable: false
+    desc: 话术 id，逗号分隔
+  - name: main_url
+    type: varchar(255)
+    nullable: false
+    desc: 总任务回调
+  - name: sub_url
+    type: varchar(255)
+    nullable: false
+    desc: 子任务回调
+  - name: data
+    type: varchar(255)
+    nullable: false
+    desc: 透传
+  - name: is_default
+    type: varchar(1)
+    nullable: false
+    desc: QaRule 专有：0 否，1 是
+  - name: rule_version
+    type: varchar(1)
+    nullable: false
+    desc: QaRule 专有：1 模板，0 质检规则
+  - name: bge_rule_id
+    type: varchar(10)
+    nullable: false
+    desc: BGE 主规则
+  - name: is_bge_classifier
+    type: varchar(1)
+    nullable: false
+    desc: 1 开启 BGE
+  - name: mobile_id
+    type: smallint
+    nullable: false
+    desc: 中间号一级，仅 qa_rule
+  - name: channel_id
+    type: smallint
+    nullable: false
+    desc: 中间号二级，仅 qa_rule
+  - name: company_id
+    type: smallint
+    nullable: false
+    desc: 中间号企业，仅 qa_rule
+  - name: customer_id
+    type: smallint
+    nullable: false
+    desc: 中间号终端，仅 qa_rule
+  - name: creator
+    type: varchar(100)
+    nullable: false
+    desc: 创建人
+  - name: modifier
+    type: varchar(100)
+    nullable: false
+    desc: 修改人
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 规则取消写 status=3，未见物理删除策略。
+notes:
+- 其余字段见 models.py QaRuleBase：各原子能力 is_* 开关、ASR/词包/提示词/声纹参数。超过 40 列上限，不逐列展开。

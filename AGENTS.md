@@ -5,9 +5,9 @@
 
 ## 1. 系统范围
 
-- **中间号**：隐私号绑定/解绑、呼叫路由、号码池、700 号码、中间号出海、话单与计费
-- **语音质检**：录音获取、ASR 转写、离线质检、实时质检、语义质检、涉诈识别、投诉判定、骚扰识别、风险分级
-- **AI 能力**：ASR、通话大模型、RAG、质检/反诈 Agent、模型服务
+- **中间号 / 700 接入**：专线呼叫经 7001X 进入 vi-as（呼叫路由、号码报备、话务管控、话单）。本次资产没有 AXB 绑定、号码池冷却和出海实现
+- **语音质检**：vi-media / vi-merge / offline-merge 录音合音，vi-billcenter 建任务，qa-server 与 scheduler 做准实时和实时分片质检，vi-pusher 推送结果
+- **AI 能力**：ASR、脱敏、关键词反诈、RAG、Qwen / DeepSeek，均由 scheduler 经 RabbitMQ 适配器调用，没有独立的 asr-service 或 fraud-agent
 - **支撑体系**：中间件（MQ、缓存、存储）、数据平台、部署、监控、应急
 
 系统之间的关系见 `04-architecture/overall.md`，术语见 `00-context/glossary.md`。

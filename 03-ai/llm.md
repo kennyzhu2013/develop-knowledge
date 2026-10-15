@@ -6,22 +6,21 @@ kind: stable
 audience: [architect, developer]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [ai-overview, ai-model-serving]
+last_verified: 2026-10-15
+related: [ai-overview, ai-model-catalog, ai-model-serving]
+source_of_truth:
+  - vi-assets/scheduler-master/sources/prod/zhuanxian_qc.xml
 ---
 
 # 通话大模型
 
-## 1. 用途
+专线流程里的大模型是 Qwen 与 DeepSeek，都由 scheduler 把 `DyHttpRequest` 丢给适配器。URL、版本和鉴权在 MongoDB `model_meta`，XML 可以指定 `version`。`model_meta` 没有管理接口。
 
-| 场景 | 输入 | 输出 | Prompt 位置 |
-| --- | --- | --- | --- |
-| 语义质检 | 转写文本 | 标签 + 理由 | TODO：代码路径 |
-| 涉诈推理 | 转写文本 + RAG 结果 | 风险判定 | TODO |
-| 通话摘要 | 转写文本 | 摘要 | TODO |
+| 模型 | 在专线流程中的位置 | 写回 |
+| --- | --- | --- |
+| Qwen（XML 中为 `qwen3-4b`） | RAG 之前，对转写做一轮分类/改写 | `qwenStatus, qwenResult` |
+| DeepSeek | 末段。prompt 按 RAG 命中的诈骗类型选择，类型说明写在 XML 里 | `deepSeekStatus, deepSeekResult, deepSeekReason`。`result==1` 记中风险 |
 
-## 2. 约束
+vi-billcenter 把 `deepSeekPromptId=38`、`qwenPromptId=39` 写死在请求里。改提示词要同时看 XML 和这两个 id 的配置来源（待确认它们在 qa-server 侧如何生效）。
 
-- Prompt 属于代码，放在代码仓库中版本化管理；本文件只做索引
-- 输出必须是结构化格式（TODO：JSON Schema 位置），并有解析失败兜底
-- TODO：上下文长度限制与长通话切分策略
+DIFY 与通用 HTTP 模型走 `ai_model` 集合，由无鉴权的管理接口维护，专线 prod XML 未使用。

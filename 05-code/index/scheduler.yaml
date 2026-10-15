@@ -1,0 +1,204 @@
+# 由 tools/gen_code_index.py 自动生成，请勿手改。
+meta:
+  id: index-scheduler
+  title: scheduler 代码索引（自动生成）
+  domain: code
+  kind: dynamic
+  audience:
+  - developer
+  - architect
+  owner: gen_code_index
+  status: active
+  last_verified: '2026-10-15'
+  generated_by: gen_code_index
+  source_repo: vi-assets/scheduler-master
+service: scheduler
+apis:
+- method: GET
+  path: /admin/aiModel/http/query
+  at: src/main/java/com/cmic/controller/AIModelController.java
+- method: GET
+  path: /admin/aiType/query
+  at: src/main/java/com/cmic/controller/AITypeController.java
+- method: GET
+  path: /admin/process/history/query
+  at: src/main/java/com/cmic/controller/ProcessController.java
+- method: GET
+  path: /admin/process/query
+  at: src/main/java/com/cmic/controller/ProcessController.java
+- method: GET
+  path: /admin/process/queryXml/{processId}
+  at: src/main/java/com/cmic/controller/ProcessController.java
+- method: POST
+  path: /admin/aiModel/create
+  at: src/main/java/com/cmic/controller/AIModelController.java
+- method: POST
+  path: /admin/aiModel/http/create
+  at: src/main/java/com/cmic/controller/AIModelController.java
+- method: POST
+  path: /admin/aiModel/http/delete/{model}
+  at: src/main/java/com/cmic/controller/AIModelController.java
+- method: POST
+  path: /admin/aiModel/http/update
+  at: src/main/java/com/cmic/controller/AIModelController.java
+- method: POST
+  path: /admin/aiType/create
+  at: src/main/java/com/cmic/controller/AITypeController.java
+- method: POST
+  path: /admin/aiType/delete/{aiTypeId}
+  at: src/main/java/com/cmic/controller/AITypeController.java
+- method: POST
+  path: /admin/aiType/update/{aiTypeId}
+  at: src/main/java/com/cmic/controller/AITypeController.java
+- method: POST
+  path: /admin/process/create
+  at: src/main/java/com/cmic/controller/ProcessController.java
+- method: POST
+  path: /admin/process/update
+  at: src/main/java/com/cmic/controller/ProcessController.java
+- method: POST
+  path: /v1/front/event/create
+  at: src/main/java/com/cmic/controller/EventController.java
+- method: POST
+  path: /v1/front/task/create
+  at: src/main/java/com/cmic/controller/TaskController.java
+outbound_calls: []
+mq:
+  consume:
+  - topic: <dynamic:#{processSender.getDynamicQueueName(>
+    event: ProcessUpdated
+    at: src/main/java/com/cmic/config/rabbitmq/ProcessConsumer.java
+  - topic: scheduler.aigs.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.asr.response.fast.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.asr.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.asr.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.ba.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.chongqing-anti.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.cqagent.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.deal.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.deepseek.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.desensitization.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.desensitization.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.dify.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.dify.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.dyHttp.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.dyHttp.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.emotion.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.huawei.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.identity.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.iterative_anti_model.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.jiutian-asr.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.jiutian-asr.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.keyword.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.keyword.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.market-call.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.qwen.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.rag.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.rongtong.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.rongtong.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.rt-fraud-review.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.scenario.cuishou.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.scenario.cuishou.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.scenario.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.scenario.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.script.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.task.callback.queue
+    event: LegacyTaskCallback
+    at: src/main/java/com/cmic/config/rabbitmq/TaskCallbackConsumer.java
+  - topic: scheduler.task.lb-callback.queue
+    event: TaskCallbackDispatch
+    at: src/main/java/com/cmic/config/rabbitmq/TaskLBCallbackConsumer.java
+  - topic: scheduler.task.queue
+    event: QcTaskSubmitted
+    at: src/main/java/com/cmic/config/rabbitmq/TaskConsumer.java
+  - topic: scheduler.task.repeat.queue
+    event: TaskCallbackDedup
+    at: src/main/java/com/cmic/config/rabbitmq/TaskDerepeatConsumer.java
+  - topic: scheduler.vfd.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.vfd.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.vp.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  - topic: scheduler.vpr.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/NorthMessageConsumer.java
+  - topic: scheduler.vpr.response.queue
+    event: AiModelResponded
+    at: src/main/java/com/cmic/config/rabbitmq/SouthMessageConsumer.java
+  produce: []
+  configured: []
+tables:
+- name: qa_detail
+  at: src/main/java/com/cmic/dao/QaDetailDaoImpl.java

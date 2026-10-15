@@ -6,19 +6,22 @@ kind: stable
 audience: [architect, developer]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [ai-overview, fraud-overview]
+last_verified: 2026-10-15
+related: [ai-overview, fraud-overview, ai-model-catalog]
+source_of_truth:
+  - vi-assets/scheduler-master/sources/prod/zhuanxian_qc.xml
 ---
 
 # RAG
 
+这里的 RAG 是质检流程里的检索，不是本知识库给 Code Agent 用的检索。
+
 | 项 | 说明 |
 | --- | --- |
-| 知识来源 | TODO：反诈案例库、规则说明、话术库 |
-| 切分策略 | TODO |
-| 向量模型 | TODO |
-| 向量库 | TODO |
-| 召回 / 重排 | TODO |
-| 更新机制 | TODO：案例入库流程 |
+| 队列 | `scheduler.rag.exchange` / `topic.rag.key`，响应 `scheduler.rag.response.queue` |
+| 请求 | `jobId, text, topK, kbType`。text 默认取 `asrText`，XML 可用属性改成其它字段 |
+| 写回 | `ragResults[{id, text, score, metadata}]` |
+| 专线判定 | `zhuanxian_qc.xml`：第一条 score ≥ 0.9 记高风险 riskLevel=1 |
+| topK | vi-billcenter 建任务时写死 `ragTopK=1` |
 
-> 注意区分：这里的 RAG 是**业务系统里的 RAG**（给 fraud-agent 用），不是本工程知识库给 Code Agent 用的检索。
+知识库文件 `02-call-qc/fraud/` 里的模式和案例**不会**被这个 RAG 加载。线上库的内容在适配器一侧，本次源码看不到。改案例若只改知识库 YAML，线上结果不变。

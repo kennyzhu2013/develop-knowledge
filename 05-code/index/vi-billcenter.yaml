@@ -1,0 +1,71 @@
+# 由 tools/gen_code_index.py 自动生成，请勿手改。
+meta:
+  id: index-vi-billcenter
+  title: vi-billcenter 代码索引（自动生成）
+  domain: code
+  kind: dynamic
+  audience:
+  - developer
+  - architect
+  owner: gen_code_index
+  status: active
+  last_verified: '2026-10-15'
+  generated_by: gen_code_index
+  source_repo: vi-assets/vi-billcenter-master
+service: vi-billcenter
+apis:
+- method: POST
+  path: /vibillcenter/subtask/callback
+  at: src/main/java/com/cmic/controller/ApplicationController.java
+- method: POST
+  path: /vibillcenter/task/callback
+  at: src/main/java/com/cmic/controller/ApplicationController.java
+- method: POST
+  path: /vibillcenter/task/recreate
+  at: src/main/java/com/cmic/controller/ApplicationController.java
+- method: POST
+  path: /vibillcenter/test
+  at: src/main/java/com/cmic/controller/ApplicationController.java
+outbound_calls: []
+mq:
+  consume:
+  - topic: TID_VI_ONE_AS_BILL_PUSH_BILLCENTER_NORMAL
+    event: CallBillCompleted
+    at: src/main/java/com/cmic/rocketmq/BillReceiver.java
+  - topic: TID_VI_ONE_BILLCENTER_BILL_PROCESS_BILLCENTER_DELAY
+    event: BillProcessDelayed
+    at: src/main/java/com/cmic/rocketmq/BillDelayReceiver.java
+  - topic: TID_VI_ONE_BILLCENTER_RECORD_PUSH_BILLCENTER_DELAY
+    event: RecordMergeRetryDelayed
+    at: src/main/java/com/cmic/rocketmq/RecordDelayReceiver.java
+  - topic: TID_VI_ONE_MERGE_MSG_BILL_NORMAL
+    event: RecordMergeCompleted
+    at: src/main/java/com/cmic/rocketmq/RecordReceiver.java
+  produce:
+  - topic: TID_VI_BILLCENTER_BILL_PUSH_PUSHER_NORMAL
+    event: LegacyBillPush
+    at: src/main/java/com/cmic/rocketmq/BillSender.java
+  - topic: TID_VI_BILLCENTER_RECORD_PUSH_PUSHER_NORMAL
+    event: LegacyRecordPush
+    at: src/main/java/com/cmic/rocketmq/RecordSender.java
+  - topic: TID_VI_ONE_BILLCENTER_BILL_PROCESS_BILLCENTER_DELAY
+    event: BillProcessDelayed
+    at: src/main/java/com/cmic/rocketmq/BillDelaySender.java
+  - topic: TID_VI_ONE_BILLCENTER_INSPECTION_PUSH_PUSHER_NORMAL
+    event: InspectionResultReady
+    at: src/main/java/com/cmic/rocketmq/InspectionResultSender.java
+  - topic: TID_VI_ONE_BILLCENTER_RECORD_PUSH_BILLCENTER_DELAY
+    event: RecordMergeRetryDelayed
+    at: src/main/java/com/cmic/rocketmq/RecordDelaySender.java
+  configured: []
+tables:
+- name: bill_new
+  at: src/main/java/com/cmic/dao/BillDao.java
+- name: company_tab
+  at: src/main/java/com/cmic/dao/MidAuthDao.java
+- name: customer_tab
+  at: src/main/java/com/cmic/dao/MidAuthDao.java
+- name: enterprise_scene
+  at: src/main/java/com/cmic/dao/MidAuthDao.java
+- name: file_down_host
+  at: src/main/java/com/cmic/dao/DccConfigDao.java

@@ -1,0 +1,72 @@
+meta:
+  id: table-user-qc-mobile-tab
+  title: mobile_tab 一级移动
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+table:
+  name: mobile_tab
+  database: user_qc
+  service: qa-server
+  description: 一级移动。qa-server 通过 customer→company→channel→mobile 连接取 qa_mobile_id。本仓库无写入。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: name
+    type: varchar(100)
+    nullable: false
+    desc: 英文名
+  - name: nickname
+    type: varchar(100)
+    nullable: false
+    desc: 简称，唯一
+  - name: fullname
+    type: varchar(100)
+    nullable: false
+    desc: 全称
+  - name: role_id_list
+    type: varchar(100)
+    nullable: true
+    desc: 角色 id 列表
+  - name: creator
+    type: varchar(50)
+    nullable: false
+    desc: 创建者
+  - name: comment
+    type: varchar(100)
+    nullable: true
+    desc: 备注
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  - name: uk_nickname
+    columns:
+    - nickname
+    unique: true
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据，无 TTL。

@@ -1,0 +1,67 @@
+meta:
+  id: table-mysql-dcc-qa-task
+  title: dcc_qa_task 700 质检任务
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/result_consumer.py
+  related:
+  - data-overview
+table:
+  name: dcc_qa_task
+  database: MYSQL_URI
+  service: qa-server
+  description: 700 质检任务。business_type=1 时结果消费读写本表。列继承 QaTaskBase，无 is_stream/end_flag。status 同样会被写成 2。
+  columns:
+  - name: id
+    type: varchar(255)
+    nullable: false
+    desc: 任务 id
+  - name: rule_id
+    type: int
+    nullable: false
+    desc: dcc_qa_rule.id
+  - name: status
+    type: varchar(1)
+    nullable: false
+    desc: 0 进行中，1 完成，2 失败
+  - name: total
+    type: int
+    nullable: false
+    desc: 子任务数
+  - name: error_num
+    type: int
+    nullable: false
+    desc: 失败数
+  - name: qa_type
+    type: smallint
+    nullable: false
+    desc: 质检类型
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 待确认。
+notes:
+- 统计计数字段同 QaTaskBase。

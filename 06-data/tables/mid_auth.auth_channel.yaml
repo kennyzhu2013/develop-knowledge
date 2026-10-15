@@ -1,0 +1,37 @@
+meta:
+  id: table-mid-auth-auth-channel
+  title: auth_channel 中间号渠道
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/apps/service.py
+  - vi-assets/vi-cront-jobs-master/apps/general.py
+  related:
+  - data-overview
+table:
+  name: auth_channel
+  database: mid_auth
+  service: qa-server
+  description: 中间号渠道。qa-server 读 id、mobile_id。vi-cront-jobs 还读 mobile_id 做字典。本仓库无写入。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 渠道 id
+  - name: mobile_id
+    type: int
+    nullable: false
+    desc: 一级移动 id
+  indexes: []
+  readers:
+  - qa-server
+  - vi-cront-jobs
+  writers: []
+  retention: 中间号配置。其余列待确认。

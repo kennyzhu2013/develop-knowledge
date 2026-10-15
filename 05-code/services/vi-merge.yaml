@@ -1,0 +1,53 @@
+meta:
+  id: svc-vi-merge
+  title: vi-merge（二期流式分片合音）
+  domain: call_qc
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-vi-merge, qc-media-chain, qc-realtime]
+  source_of_truth: [vi-assets/vi-merge-master]
+
+service:
+  name: vi-merge
+  description: 通话中经 WebSocket 接收 vi-codec 推来的 PCM，按 1/2/5 秒切片生成 WAV 上传 vi-mdown（ZoneC），每片发一条分片合音消息；结束时上传整通录音（ZoneM，不发消息）
+  repository: vi-merge
+  path: .
+  language: Go
+  framework: Gin、gorilla/websocket、RocketMQ v5 Go SDK、ffmpeg（仅转 mp3）
+  etcd_name: com.cmic.vi.merge
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+
+dependencies:
+  services: []
+  external: [vi-codec, vi-mdown]
+  middleware: [rocketmq, etcd]
+
+apis:
+  provides:
+    - { method: GET, path: /v1/merge, summary: "WebSocket：vi-codec 推送 PCM（Header X-Params / X-Notice，EOS 结束）" }
+    - { method: GET, path: /metrics, summary: Prometheus 指标 }
+    - { method: GET, path: "/ops/config/{config}", summary: 运维：查看配置（无鉴权） }
+    - { method: PUT, path: "/ops/config/{config}", summary: 运维：修改配置（无鉴权） }
+    - { method: GET, path: /ops/configManifest, summary: 运维：配置清单 }
+    - { method: GET, path: "/ops/omu/{ops}", summary: 运维：服务状态 }
+  consumes:
+    - "vi-mdown：POST /inner/media/upload/<fileName>?path=&zone=ZoneC|ZoneM&volume=（06-data/api/media-file-transfer.md）"
+
+events:
+  produce: [StreamSegmentMerged]
+  consume: []
+
+tables: []
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/record-merge-backlog.md

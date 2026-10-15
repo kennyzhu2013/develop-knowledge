@@ -1,0 +1,465 @@
+meta:
+  id: mn-traffic-control-strategies
+  title: 话务管控 - 策略与脚本清单
+  domain: mid_number
+  kind: dynamic
+  audience: [developer, architect, qa, ops]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  related: [mn-traffic-control-overview, mn-traffic-control-codes, mn-traffic-control-testing]
+  source_of_truth:
+    - vi-assets/vi-cront-jobs-master/
+    - 设计文档《话务管控策略表DDL》《专线质检策略管控服务 redis数据结构》《话务管控上线依赖》
+  # 字段约定
+  #   strategy_code : 明细 / 统计表 strategy_name 取值（viStrategyDailyStatistics.py:STRATEGY_NAME_MAP）
+  #   kind          : decision（查话单判定）| config_sync（只同步配置，计数在 strategy-service）| auxiliary（维护 / 统计）| tool（手工脚本）| none
+  #   status        : active 已实现且有设计文档
+  #                   broken 按仓库现状无法运行
+  #                   undocumented 已实现但无 DDL / 设计文档 / 不在《话务管控上线依赖》crontab
+  #                   not_implemented 文档定义了但资产内没有实现
+  #   redis_ttl     : control_valid_second>0 时 EXPIRE，否则永不过期（以下简写 "control_valid_second"）
+  #   control_action: Redis action.opType = 策略表 control_command 原值（0 拦截 1 放通 2 告警），明细表映射 {0:"0",1:"2",2:"1"}
+  # 共性前提（decision 类）：企业 customer_tab.status=1 AND is_call=1；策略 status=1 AND effect_object=1；
+  #   话单 handle_start_time >= effect_time；key 不存在或策略今天更新过才 SET；仅首次（key 原不存在）写明细。
+  # Redis 文档《专线质检策略管控服务 redis数据结构》定义的 13 个 key 全部有脚本实现，没有“文档有、代码无”的 key。
+
+strategies:
+  - id: tc-high-frequency
+    name: 短时高频外呼
+    strategy_code: "1"
+    kind: decision
+    script: viStrategyHighFrequency.py
+    config_table: vi_strategy.strategy_high_frequency
+    cron: "* * * * *"
+    data_source: StarRocks vi_bill.bill_YYYY_MM_DD（当天）
+    condition: 按主叫 COUNT(*)，call_duration_s>0；stat_cycle_second=86400 当天 / 3600 当前自然小时，其他值跳过；cnt >= frequency_threshold
+    threshold_source: 策略表 frequency_threshold（默认 300）、stat_cycle_second（默认 86400）；支持 is_main 主账户展开
+    dimension: 号码
+    redis_key: highfreq-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command（默认 2 告警）
+    append_reason: "5"
+    detail_table: mid_bussops.call_control_detail（threshold_config=阈值，actual_value=次数）
+    status: active
+    issues:
+      - 自然日 / 自然小时窗口，零点、整点清零，与 DDL 注释“300 次/24 小时”字面不符
+      - 判定用 >=，其余计数类策略多为 >
+
+  - id: tc-remote-range
+    name: 异地大范围外呼
+    strategy_code: "2"
+    kind: decision
+    script: viStrategyRemoteRange.py
+    config_table: vi_strategy.strategy_remote_range
+    cron: "* * * * *"
+    data_source: StarRocks vi_bill.bill_YYYY_MM_DD（当天）
+    condition: 按主叫 COUNT(DISTINCT call_out_area_code)，call_duration_s>0；周期 86400 / 3600；city_cnt > area_threshold
+    threshold_source: 策略表 area_threshold（默认 100）、stat_cycle_second（默认 0）；支持 is_main
+    dimension: 号码
+    redis_key: difarea-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "21"
+    detail_table: mid_bussops.call_control_detail（actual_value=地市数）
+    status: active
+    issues:
+      - DDL 默认 stat_cycle_second=0，脚本不支持会直接跳过，策略静默失效
+      - 字段 caller_home_city（报备主叫归属城市）脚本未使用
+
+  - id: tc-offwork
+    name: 非工作时间外呼
+    strategy_code: "3"
+    kind: config_sync
+    script: viStrategyOffwork.py
+    config_table: vi_strategy.strategy_offwork_call
+    cron: "*/10 * * * *"
+    data_source: 只读策略表；企业过滤 get_status_enabled_customer_ids（status=1）；不查话单
+    condition: effect_time > now 跳过，其余无条件同步；时段内外呼次数是否超 threshold 由 strategy-service 实时判断（待确认）
+    threshold_source: 策略表 call_threshold（默认 0）→ condition.threshold；control_time_range（默认 22:00-08:00）→ condition.curfew；支持 is_main
+    dimension: 企业
+    redis_key: offtime-{customer_id}
+    redis_ttl: 无（每次运行无条件覆盖，不 EXPIRE）
+    control_action: control_command
+    append_reason: "13"
+    detail_table: 不直接写；由 viStrategyBillDetail.py 按话单 append_reason=13 补录（strategy_name "3"）
+    status: active
+    issues:
+      - 文档“每分钟执行” vs crontab */10，配置生效最长延迟 10 分钟
+      - effect_time 为 NULL 时 `effect_time > now` 抛 TypeError，整批不同步
+      - 跨零点时段 22:00-08:00 在 BillDetail 中无法匹配（见 tc-bill-detail）
+
+  - id: tc-business-threshold
+    name: 超业务门限外呼（企业外呼门限）
+    strategy_code: "4"
+    kind: config_sync
+    script: viStrategyBusinessThreshold.py
+    config_table: vi_strategy.strategy_business_threshold
+    cron: "* * * * *"
+    data_source: 只读策略表；企业过滤 status=1；不查话单
+    condition: effect_time > now 跳过；key 不存在或今天更新过则写；实际计数由 strategy-service 完成（待确认）
+    threshold_source: 策略表 max_call_limit（默认 200000000）→ condition.threshold；支持 is_main
+    dimension: 企业
+    redis_key: threshold-{customer_id}
+    redis_ttl: control_valid_second（到期后下一分钟重新同步）
+    control_action: control_command
+    append_reason: "20"
+    detail_table: 不直接写；由 viStrategyBillDetail.py 按 append_reason=20 补录（strategy_name "4"）
+    status: active
+    issues:
+      - Redis value 不含 stat_cycle_second，下游如何得知统计周期待确认
+      - effect_time 为 NULL 时 TypeError
+
+  - id: tc-business-range
+    name: 超业务范围外呼（盲呼 / 短秒率 / 接通率）
+    strategy_code: "5"
+    kind: decision
+    script: viStrategyBusinessRange.py
+    config_table: vi_strategy.strategy_business_range
+    cron: "* * * * *"
+    data_source: bill_YYYY_MM_DD（表名无 vi_bill. 前缀，依赖引擎默认库）
+    condition: >-
+      t1 被叫 11 位且以 1 开头，按（主叫, 被叫前 9 位）统计 COUNT(DISTINCT RIGHT(被叫,2)) 为 callee_cnt；
+      t2 短秒率 = 0<时长<=3 占比、接通率 = finish_state=1 占比，HAVING COUNT(*) > 50；
+      dimension 5: callee_cnt > threshold_value；6: short_rate > threshold_value；7: call_forward_rate < threshold_value
+    threshold_source: 策略表 dimension、threshold_value（varchar 小数）、stat_cycle_second（86400/3600）；is_main 按 (customer_id, dimension) 展开
+    dimension: 号码（control_dimension=5/6/7）
+    redis_key: bizrange-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "22 / 23 / 24（随 dimension 5 / 6 / 7）"
+    detail_table: mid_bussops.call_control_detail（control_dimension=维度）
+    status: active
+    issues:
+      - 三个维度共用一个 key，后命中的覆盖 appendReason
+      - 硬编码 HAVING COUNT(*) > 50，50 通及以下永不判定
+      - DDL 默认 append_reason=0、dimension=0（未定义值）
+
+  - id: tc-long-call
+    name: 长通话
+    strategy_code: "8"
+    kind: decision
+    script: viStrategyLongCall.py
+    config_table: vi_strategy.strategy_long_call
+    cron: "* * * * *"
+    data_source: MySQL vi_bill.bill_YYYY_MM_DD（USE_MYSQL=True，selectForSQL engine=vi_bill）
+    condition: DATE(handle_start_time)=CURDATE()，SELECT DISTINCT 主叫与 call_duration_s，Python 中 call_duration_s >= long_call_threshold
+    threshold_source: 策略表 long_call_threshold（默认 0）；无统计周期字段；支持 is_main
+    dimension: 号码
+    redis_key: longcall-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "25"
+    detail_table: mid_bussops.call_control_detail
+    status: active
+    issues:
+      - USE_MYSQL=True，注释称 True 为“MySQL 测试”，疑似测试开关遗留
+      - 不过滤 call_duration_s>0，默认阈值 0 时当天所有主叫都会命中
+      - 全量拉取当天话单到 Python，数据量大时有性能风险
+
+  - id: tc-difarea-high-freq
+    name: 外省 / 外地市大范围高频外呼
+    strategy_code: "9（省）/ 10（市）"
+    kind: decision
+    script: viStrategyDifareaHighFreq.py
+    config_table: vi_strategy.strategy_difarea_high_frequency
+    cron: "* * * * *"
+    data_source: StarRocks vi_bill.bill_YYYY_MM_DD
+    condition: >-
+      窗口 [max(now-stat_cycle_second, 今天 00:00), now]；effect_area=1 比较 biz_report_province_id 与 call_out_province_id，
+      =2 比较 biz_report_area_code 与 call_out_area_code；时长>0、报备字段非空；
+      total_calls > call_threshold AND 外地占比% > area_ratio_threshold×100
+    threshold_source: 策略表 effect_area、stat_cycle_second、call_threshold、area_ratio_threshold（如 "0.40"）；无 is_main
+    dimension: 号码（按省 / 按市）
+    redis_key: province-highfreq-{caller} / city-highfreq-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "26（省）/ 27（市）"
+    detail_table: mid_bussops.call_control_detail（threshold_config="{call}|{ratio}"，actual_value="{total}|{pct}"）
+    status: undocumented
+    issues:
+      - 策略表无 DDL，不在《话务管控上线依赖》中
+      - effect_area 非 1/2 时默认按省前缀写 key
+
+  - id: tc-silent-call-burst
+    name: 沉默号码话务突增
+    strategy_code: "11"
+    kind: decision
+    script: viStrategySilentCallBurst.py
+    config_table: vi_strategy.strategy_silent_call_burst
+    cron: "* * * * *"
+    data_source: vi_strategy.active_phone_tab（DATEDIFF(NOW(), active_time) > backtrack_cycle_day）+ StarRocks 当天话单（IN 列表每批 500）
+    condition: 窗口 GREATEST(now-stat_cycle_second, 今天 00:00)，时长>0；cnt > call_threshold
+    threshold_source: 策略表 stat_cycle_second、backtrack_cycle_day、call_threshold；无 is_main
+    dimension: 号码
+    redis_key: inactive-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "28"
+    detail_table: mid_bussops.call_control_detail
+    status: undocumented
+    issues:
+      - 依赖 ActivePhone 维护 active_time；ActivePhone 当前 broken，沉默判定基于过期数据
+      - 策略表无 DDL
+
+  - id: tc-idle-high-freq
+    name: 闲时高频外呼
+    strategy_code: "12"
+    kind: decision
+    script: viStrategyIdleHighFreq.py
+    config_table: vi_strategy.strategy_idle_high_frequency
+    cron: "* * * * *"
+    data_source: StarRocks vi_bill.bill_YYYY_MM_DD
+    condition: 仅支持 stat_cycle_second=86400；total_calls > call_threshold AND idle_calls/total_calls > idle_ratio_threshold（小数比较，未 ×100）
+    threshold_source: 策略表 call_threshold、idle_time_range（如 00:00-08:00,18:00-24:00）、idle_ratio_threshold；无 is_main
+    dimension: 号码
+    redis_key: idle-highfreq-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "29"
+    detail_table: mid_bussops.call_control_detail（threshold_config 只记 call_threshold，actual_value 只记 total_calls）
+    status: undocumented
+    issues:
+      - parse_idle_hours 只取小时，分钟被忽略；不支持跨午夜时段
+      - 比例口径与 DifareaHighFreq（×100）不同
+      - 策略表无 DDL
+
+  - id: tc-short-highfreq-burst
+    name: 短时高频突增
+    strategy_code: "13"
+    kind: decision
+    script: viStrategyShortHighfreqBurst.py
+    config_table: vi_strategy.strategy_short_highfreq_burst
+    cron: "* * * * *"
+    data_source: StarRocks 当天话单 + vi_bill_history.bill_history（历史均值）
+    condition: >-
+      窗口 [max(now-stat_cycle_second, 今天 00:00), now] 内 total_calls > call_threshold AND total_calls > avg_history；
+      avg_history = avg_history_call_count（>0 时）否则 bill_history 中 [now-backtrack_cycle_day, 今天 00:00) 有通话日的日均；无历史时 avg=0
+    threshold_source: 策略表 stat_cycle_second、call_threshold、backtrack_cycle_day、avg_history_call_count；无 is_main
+    dimension: 号码
+    redis_key: short-highfreq-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "30"
+    detail_table: mid_bussops.call_control_detail
+    status: undocumented
+    issues:
+      - 短窗口次数与历史“日均”比较，口径不一致（待确认是否业务意图）
+      - 日均只统计有通话的天
+      - 策略表无 DDL
+
+  - id: tc-short-longcall-burst
+    name: 短时长通话突增
+    strategy_code: "14"
+    kind: decision
+    script: viStrategyShortLongcallBurst.py
+    config_table: vi_strategy.strategy_short_longcall_burst
+    cron: "* * * * *"
+    data_source: StarRocks vi_bill.bill_YYYY_MM_DD
+    condition: 窗口同上，时长>0；long_calls = SUM(call_duration_s > short_call_define_second)；total_calls > total_call_threshold AND long_calls > long_call_threshold
+    threshold_source: 策略表 stat_cycle_second、short_call_define_second、total_call_threshold、long_call_threshold；无 is_main
+    dimension: 号码
+    redis_key: short-longcall-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "31"
+    detail_table: mid_bussops.call_control_detail（threshold_config="total:..,long:.."）
+    status: undocumented
+    issues:
+      - 字段名 short_call_define_second 实际作“长通话”秒数下限（待确认）
+      - 策略表无 DDL
+
+  - id: tc-silent-difarea-longcall
+    name: 沉默号码外地长通话突增
+    strategy_code: "15"
+    kind: decision
+    script: viStrategySilentDifareaLongcall.py
+    config_table: vi_strategy.strategy_silent_difarea_longcall_burst
+    cron: "* * * * *"
+    data_source: active_phone_tab（customer_id 匹配且 DATEDIFF(CURRENT_DATE(), active_time) > backtrack_cycle_day）+ StarRocks 当天话单（IN 每批 200）
+    condition: 窗口同上；COUNT(*) > call_threshold AND 长通话数(时长 > long_call_def_second) > long_call_threshold AND 外地占比% > cross_area_ratio_threshold×100（effect_area=1 比省，否则比市）
+    threshold_source: 策略表 effect_area、stat_cycle_second、call_threshold、cross_area_ratio_threshold、backtrack_cycle_day、long_call_def_second、long_call_threshold
+    dimension: 号码（按省 / 按市）
+    redis_key: inactive-difarea-longcall-{caller}
+    redis_ttl: control_valid_second
+    control_action: control_command
+    append_reason: "32"
+    detail_table: mid_bussops.call_control_detail
+    status: undocumented
+    issues:
+      - 依赖 ActivePhone（当前 broken）
+      - 沉默判定用 CURRENT_DATE()，SilentCallBurst 用 NOW()，口径不同
+      - 策略表无 DDL
+
+  # ---------------- 辅助脚本 ----------------
+  - id: tc-disabled-redis-clear
+    name: 策略停用清理
+    strategy_code: none
+    kind: auxiliary
+    script: viStrategyDisabledRedisClear.py
+    config_table: 全部 12 张策略表（status=0）
+    cron: "* * * * *"
+    data_source: 策略表 status=0；user_qc.customer_tab（app_id 映射，不过滤 status）；Redis SCAN 前缀* count 1000；当天话单（value 解析失败时按主叫反查 cid）
+    condition: >-
+      老策略（STRATEGY_MAPPING）：企业型 key 取 key 中 cid，号码型取 value.customerId/isMain；
+      (isMain==0 且 cid∈停用独立策略) 或 (isMain==1 且 cid∈停用主账户展开集合) 时删除。
+      新策略（NEW_STRATEGY_MAPPING）：cid∈停用集合即删除；扫描 inactive- 时排除 inactive-difarea-longcall-
+    threshold_source: 无
+    dimension: 号码 / 企业
+    redis_key: 删除全部 14 个前缀
+    redis_ttl: 无
+    control_action: DEL
+    append_reason: 无
+    detail_table: 无
+    status: active
+    issues:
+      - 只处理 status=0；策略行被物理删除时 key 不清理（永不过期的 offtime- 会一直生效）
+      - 同一企业同时有 status=0 与 status=1 记录时，key 可能被反复删除又重建
+      - 号码型 key 只按最后写入企业判定，可能误删 / 漏删
+
+  - id: tc-bill-detail
+    name: 非工作时间与企业外呼门限明细入库
+    strategy_code: "3 / 4"
+    kind: auxiliary
+    script: viStrategyBillDetail.py
+    config_table: strategy_business_threshold、strategy_offwork_call（status=1，按 customer 与 app_id 建索引）
+    cron: "5 * * * *"
+    data_source: 上一小时话单 append_reason IN (13, 20)；当天 call_control_detail（strategy_name IN ('3','4')）去重
+    condition: 去重窗口——门限 threshold:{cid}:{epoch//cycle*cycle}；非工作时间 offwork:{cid}:{时段序号}:{日期}；同窗口只写一条
+    threshold_source: 策略表；缺配置时 DEFAULT_STAT_CYCLE=86400、DEFAULT_TIME_RANGE
+    dimension: 企业（control_subjects 为空）
+    redis_key: 无
+    redis_ttl: 无
+    control_action: 明细 control_command 按 {0:"0",1:"2",2:"1"} 映射
+    append_reason: 读 13、20
+    detail_table: mid_bussops.call_control_detail
+    status: undocumented
+    issues:
+      - 在 README crontab 中，但不在《话务管控上线依赖》中
+      - compute_offwork_window 假设时段不跨天，默认配置 22:00-08:00 永远匹配不到，非工作时间明细不会写入
+      - DEFAULT_TIME_RANGE 使用非 ASCII 连字符（U+2011），缺配置时 split('-') 失败
+
+  - id: tc-active-phone
+    name: 号码活跃更新
+    strategy_code: none
+    kind: auxiliary
+    script: viStrategyActivePhone.py
+    config_table: vi_strategy.active_phone_tab（读写）；user_qc.biz_num_auth（match_type=1）
+    cron: "0 1 * * *"
+    data_source: 首次运行读 vi_bill_history.bill_history，否则读昨天日表；可传参 YYYY-MM-DD
+    condition: upsert 报备号码；按 biz_number 分批 500 取 MAX(handle_start_time)，更大时更新 active_time
+    threshold_source: 无
+    dimension: 号码
+    redis_key: 无
+    redis_ttl: 无
+    control_action: 无
+    append_reason: 无
+    detail_table: 无（结束发邮件）
+    status: broken
+    issues:
+      - "from apps.email import send_email：仓库无此模块，ImportError"
+      - 不在《话务管控上线依赖》中
+
+  - id: tc-daily-statistics
+    name: 管控日统计
+    strategy_code: 全部
+    kind: auxiliary
+    script: viStrategyDailyStatistics.py
+    config_table: 无
+    cron: "0 1 * * *"
+    data_source: vi_bill.bill_{昨日}，按 append_reason 分组 COUNT(DISTINCT 主叫)、COUNT(*)
+    condition: APPEND_REASON_MAP 5→1、21→2、13→3、20→4、22/23/24→5(5/6/7)、25→8、26→9、27→10、28→11、29→12、30→13、31→14、32→15
+    threshold_source: 无
+    dimension: 企业 × 策略 × 维度
+    redis_key: 无
+    redis_ttl: 无
+    control_action: 无
+    append_reason: 读 5、13、20~32
+    detail_table: mid_bussops.call_control_statistics
+    status: broken
+    issues:
+      - apps.email 缺失，ImportError
+      - 防重检查被注释，重跑重复写
+      - 按话单 append_reason 统计（含告警 / 放通），与 dailyRange.py（按 detail 统计）口径不同
+      - 文档写成 mid_bussop.call_control_statistics（少 s）
+
+  - id: tc-daily-range
+    name: 日统计（明细聚合版）
+    strategy_code: 全部
+    kind: tool
+    script: dailyRange.py
+    config_table: 无
+    cron: 不在 crontab（手工，可传 YYYY-MM-DD）
+    data_source: mid_bussops.call_control_detail
+    condition: 按企业 / 策略 / 维度 COUNT(DISTINCT control_subjects)、COUNT(*)；当日已有统计即退出（有防重）
+    threshold_source: 无
+    dimension: 企业 × 策略 × 维度
+    redis_key: 无
+    redis_ttl: 无
+    control_action: 无
+    append_reason: 无
+    detail_table: mid_bussops.call_control_statistics
+    status: undocumented
+    issues:
+      - 与 DailyStatistics 哪个是正式口径待确认
+
+  - id: tc-ck-check
+    name: 日统计行数检查
+    strategy_code: none
+    kind: tool
+    script: ck_check.py
+    config_table: 无
+    cron: 不在 crontab
+    data_source: mid_bussops.call_control_statistics
+    condition: 查询某日（缺省昨日）行数；check()（防重 + 从 detail 聚合）已定义但 __main__ 未调用
+    threshold_source: 无
+    dimension: 无
+    redis_key: 无
+    redis_ttl: 无
+    control_action: 无
+    append_reason: 无
+    detail_table: 只读
+    status: undocumented
+    issues: [调试脚本]
+
+  - id: tc-data-check
+    name: 异地大范围数据核对
+    strategy_code: none
+    kind: tool
+    script: dataCheck.py
+    config_table: vi_strategy.strategy_remote_range
+    cron: 不在 crontab
+    data_source: 当天话单
+    condition: 对硬编码测试号码逐条打印地市聚合，人工核对
+    threshold_source: 无
+    dimension: 号码
+    redis_key: 无
+    redis_ttl: 无
+    control_action: 无
+    append_reason: 无
+    detail_table: 无
+    status: undocumented
+    issues:
+      - 硬编码真实格式号码，违反“不得写入真实手机号”红线，应删除或脱敏
+
+  # ---------------- 文档定义但资产内未实现 ----------------
+  - id: tc-qc-result-control
+    name: 质检结果驱动管控（二期，放音 / 阻断）
+    strategy_code: none
+    kind: none
+    script: 无（vi-cront-jobs 中无实现）
+    config_table: user_qc.qa_strategy_config（qa-server 读取，control_type=1）
+    cron: 无
+    data_source: qa-server 子任务结果（risk_level 1/2）
+    condition: 中高风险质检结果 POST STRATEGY_CONFIG_URL（qa-server apps/result_consumer.py:sub_result），接收方待确认
+    threshold_source: qa_strategy_config
+    dimension: 呼叫
+    redis_key: 未定义
+    redis_ttl: 未定义
+    control_action: 二期话单 control_action 1-仅放音 2-仅阻断 3-先放音再阻断；qa-server ctrlAction 取 qa_strategy_config.control_action
+    append_reason: 未定义
+    detail_table: 二期话单 bill_new.control_action（无写入方）
+    status: not_implemented
+    issues:
+      - 《二期话单DDL》新增 control_action，但 vi-as、vi-billcenter、vi-pusher 均不读写
+      - STRATEGY_CONFIG_URL 是否指向 strategy-service 待确认

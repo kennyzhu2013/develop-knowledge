@@ -1,0 +1,35 @@
+meta:
+  id: table-dcc-conf-config-user
+  title: config_user 700 用户
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/apps/service.py
+  related:
+  - data-overview
+table:
+  name: config_user
+  database: dcc_conf
+  service: qa-server
+  description: 700 录音 URL 使用。qa-server 读 id、record_file_type。本仓库无写入。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 用户 id
+  - name: record_file_type
+    type: int
+    nullable: true
+    desc: 录音文件类型，取值待确认
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据。其余列待确认。

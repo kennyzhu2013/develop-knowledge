@@ -1,0 +1,81 @@
+meta:
+  id: svc-vi-as
+  title: vi-as（SIP 应用服务器 / B2BUA）
+  domain: mid_number
+  kind: dynamic
+  audience: [all]
+  owner: TODO
+  status: draft
+  last_verified: 2026-10-15
+  generated_by: manual
+  related: [module-vi-as, mn-call-routing-overview, mn-number-pool-overview]
+  source_of_truth: [vi-assets/vi-as-master]
+
+service:
+  name: vi-as
+  description: 700 专线呼叫的 SIP B2BUA：号码授权鉴权、话务管控查询、写基础话单、把 RTP 锚定到 vi-media 录音、通话结束通知话单中心
+  repository: vi-as
+  path: .
+  language: Java 21
+  framework: JAIN-SIP（gov.nist + Netty UDP）、JDK HttpServer、RocketMQ 5 gRPC 客户端、druid
+  entry: com.cmic.start.Application.main
+  ports:
+    sip_udp: 5080
+    http: "5668（dev）/ 5287（prod），无鉴权"
+    jmx_exporter: 8588
+  etcd_name: "节点名 vi；发现 com.cmic.vi.media、com.cmic.vi.strategy、com.cmic.xsipproxy、httpProxyName"
+
+runtime:
+  cluster: TODO
+  namespace: TODO
+  replicas: TODO
+  jvm: "dev -Xmx1g / prod -Xmx21g，ZGC"
+  run_modes: "startMode 0 正常；1 有话单无录音（只写 dblog，不连 DB/ETCD/MQ）；2 纯转发无话单"
+
+dependencies:
+  services: [vi-media]
+  external: [xproxy, ims, strategy-service, xsipproxy]
+  middleware: [mysql, rocketmq, etcd]
+
+apis:
+  provides:
+    - { method: ANY, path: /media, summary: vi-media 媒体事件回调（DTMF_DONE / AUDIO_DONE / VIDEO_DONE / ENHANCE_DONE） }
+    - { method: ANY, path: /metrics, summary: Prometheus 指标 }
+    - { method: ANY, path: /ops, summary: "/ops/status、/ops/pause、/ops/resume：运维状态与摘流" }
+    - { method: ANY, path: /hook, summary: 对指定会话执行调试 hook }
+    - { method: ANY, path: /forcemediacodec, summary: 强制媒体编码（调试） }
+    - { method: ANY, path: /control, summary: 反射修改 DevHelp 运行时开关（高危，无鉴权） }
+    - { method: ANY, path: /changeStartMode, summary: 切换运行模式 0/1/2 }
+    - { method: ANY, path: /triggerSipStackAudit, summary: 触发 SIP 栈审计 }
+    - { method: ANY, path: /sms_callback, summary: 遗留，仅打日志 }
+  other_protocols:
+    - "SIP/UDP 5080：初始 INVITE 及对话内请求、OPTIONS 健康探测（详见 01-mid-number/call-routing/overview.md）"
+  consumes:
+    - "vi-media：POST /call/session/create|update|pickup|stop、/call/media/play|dtmf|stop|enhance（06-data/api/vi-as-to-vi-media.md）"
+    - "strategy-service：POST /strategy，超时 500ms（06-data/api/strategy-service.md）"
+
+events:
+  produce: [CallBillCompleted]
+  consume: []
+  inactive: [CallEventNotified]
+
+tables:
+  - vi_bill.bill_new
+  - vi_bill.bill_fail
+  - user_qc.biz_num_auth
+  - user_qc.company_tab
+  - user_qc.customer_tab
+  - user_qc.channel_tab
+  - user_qc.chinamobile_icscf_ip
+  - user_qc.phone_segment_area_code_info
+tables_inactive: [special_telb_rule, caller_prefer_media, check_section_no]
+
+config_keys:
+  etcd: ["/config/version", "/config/num/version", "/config/max_sessions", "/config/audit_strategy_allow", "/config/supported_codec", "/config/db_oper_reject_ratio"]
+  files: [config.prod/application-config.xml, config.prod/rocketmq.xml, config.prod/vi_bill.yaml, config.prod/vi_conf.yaml, config.prod/sip-stack-call.properties]
+
+slo: {}
+
+runbooks:
+  - 07-operation/runbooks/sip-call-failure.md
+  - 07-operation/runbooks/traffic-control-misjudge.md

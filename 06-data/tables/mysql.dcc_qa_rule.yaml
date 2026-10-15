@@ -1,0 +1,89 @@
+meta:
+  id: table-mysql-dcc-qa-rule
+  title: dcc_qa_rule 700 质检规则
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: DccQaRule 的 ORM 写入使用默认 MYSQL_URI，load_qa_rule 从 mid_strategy 读取 dcc_qa_rule。是否同一库待确认。'
+table:
+  name: dcc_qa_rule
+  database: MYSQL_URI
+  service: qa-server
+  description: 700 质检规则，列继承 QaRuleBase，另有 dcc_* 账户字段，没有 qa_rule 上的中间号 mobile_id 等列。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: app_id
+    type: varchar(10)
+    nullable: false
+    desc: 质检账户
+  - name: name
+    type: varchar(255)
+    nullable: false
+    desc: 规则名
+  - name: process_id
+    type: varchar(100)
+    nullable: false
+    desc: 流程 id
+  - name: status
+    type: varchar(1)
+    nullable: false
+    desc: 1 正常，2 暂停，3 取消
+  - name: dcc_mobile_id
+    type: varchar(10)
+    nullable: false
+    desc: 700 一级移动
+  - name: dcc_channel_id
+    type: varchar(10)
+    nullable: false
+    desc: 700 二级
+  - name: dcc_platform_id
+    type: smallint
+    nullable: false
+    desc: 应用平台
+  - name: dcc_user_id
+    type: smallint
+    nullable: false
+    desc: 业务使用方
+  - name: dcc_app_id
+    type: varchar(10)
+    nullable: false
+    desc: EB 账户
+  - name: dcc_scene
+    type: varchar(10)
+    nullable: false
+    desc: 报备场景
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 同 qa_rule，待确认。
+notes:
+- 原子能力开关列与 qa_rule 相同，见 QaRuleBase。

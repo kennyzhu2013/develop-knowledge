@@ -1,0 +1,37 @@
+meta:
+  id: table-mid-auth-config-company
+  title: config_company 中间号企业
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/apps/service.py
+  - vi-assets/vi-cront-jobs-master/apps/general.py
+  related:
+  - data-overview
+table:
+  name: config_company
+  database: mid_auth
+  service: qa-server
+  description: 中间号企业字典。qa-server 只读 id、record_suffix 以拼录音 URL。vi-cront-jobs SELECT *。本仓库无写入，完整列待确认。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 企业 id
+  - name: record_suffix
+    type: varchar
+    nullable: true
+    desc: 录音后缀
+  indexes: []
+  readers:
+  - qa-server
+  - vi-cront-jobs
+  writers: []
+  retention: 中间号配置，无 TTL。

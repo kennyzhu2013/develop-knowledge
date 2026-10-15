@@ -122,6 +122,10 @@ def check_sensitive(path: Path, text: str, rep: Report) -> None:
             rep.error(f"{rel(path)}:{i}", "疑似密钥 / 密码")
 
 
+def external_names(kb: dict) -> set[str]:
+    return {e["name"] for e in as_list(kb.get("external_systems")) if isinstance(e, dict) and e.get("name")}
+
+
 def check_knowledge_yaml(kb: dict, rep: Report) -> None:
     where = "knowledge.yaml"
     for name, r in kb["roles"].items():
@@ -141,6 +145,9 @@ def check_knowledge_yaml(kb: dict, rep: Report) -> None:
     for s in kb["services"]:
         if not (ROOT / "05-code" / "services" / f"{s}.yaml").exists():
             rep.error(where, f"服务 {s} 缺少 05-code/services/{s}.yaml")
+    for s in external_names(kb):
+        if s in kb["services"]:
+            rep.error(where, f"{s} 同时出现在 services 与 external_systems 中")
     ids = set()
     for r in kb.get("routes", []):
         rid = r.get("id")
@@ -204,6 +211,9 @@ def check_services(kb: dict, rep: Report) -> dict[str, dict]:
         for dep in as_list((data.get("dependencies") or {}).get("services")):
             if dep not in kb["services"]:
                 rep.error(where, f"依赖未登记的服务：{dep}")
+        for dep in as_list((data.get("dependencies") or {}).get("external")):
+            if dep not in external_names(kb):
+                rep.error(where, f"依赖未登记的外部系统：{dep}（在 knowledge.yaml external_systems 中登记）")
         ev = data.get("events") or {}
         for direction in ("produce", "consume"):
             for e in as_list(ev.get(direction)):
@@ -250,6 +260,8 @@ def derive_edges(services: dict[str, dict]) -> list[dict]:
     for name, data in services.items():
         for dep in as_list((data.get("dependencies") or {}).get("services")):
             edges.append({"from": name, "to": dep, "via": "sync"})
+        for dep in as_list((data.get("dependencies") or {}).get("external")):
+            edges.append({"from": name, "to": dep, "via": "external"})
         for e in as_list((data.get("events") or {}).get("produce")):
             producers.setdefault(e, []).append(name)
     for name, data in services.items():
@@ -276,7 +288,7 @@ def write_deps(services: dict[str, dict]) -> None:
 def check_mermaid(doc: Doc, kb: dict, rep: Report) -> None:
     if not doc.rel.startswith("04-architecture/"):
         return
-    known = set(kb["services"])
+    known = set(kb["services"]) | external_names(kb)
     for block in MERMAID_RE.findall(doc.body or ""):
         for line in block.splitlines():
             if line.strip().startswith(("%%", "flowchart", "graph")):
@@ -285,7 +297,7 @@ def check_mermaid(doc: Doc, kb: dict, rep: Report) -> None:
             outside_labels = parts[0] if len(parts) == 1 else parts[0] + " " + parts[-1]
             for node in dict.fromkeys(KEBAB_NODE_RE.findall(outside_labels)):
                 if node not in known:
-                    rep.error(doc.rel, f"架构图节点 {node} 不是已登记的服务名")
+                    rep.error(doc.rel, f"架构图节点 {node} 不是已登记的服务名或外部系统名")
 
 
 def main() -> int:

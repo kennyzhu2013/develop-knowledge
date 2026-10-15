@@ -1,0 +1,45 @@
+# 由 tools/gen_code_index.py 自动生成，请勿手改。
+meta:
+  id: index-vi-pusher
+  title: vi-pusher 代码索引（自动生成）
+  domain: code
+  kind: dynamic
+  audience:
+  - developer
+  - architect
+  owner: gen_code_index
+  status: active
+  last_verified: '2026-10-15'
+  generated_by: gen_code_index
+  source_repo: vi-assets/vi-pusher-master
+service: vi-pusher
+apis:
+- method: POST
+  path: /vipusher/task/callback
+  at: src/main/java/com/cmic/controller/TestController.java
+outbound_calls: []
+mq:
+  consume:
+  - topic: TID_VI_ONE_BILLCENTER_INSPECTION_PUSH_PUSHER_NORMAL
+    event: InspectionResultReady
+    at: src/main/java/com/cmic/rocketmq/InspectionResultReceiver.java
+  - topic: TID_VI_ONE_PUSHER_INSPECTION_PUSH_PUSHER_DELAY
+    event: InspectionPushRetryDelayed
+    at: src/main/java/com/cmic/rocketmq/InspectionDelayReceiver.java
+  produce:
+  - topic: TID_VI_ONE_PUSHER_INSPECTION_PUSH_PUSHER_DELAY
+    event: InspectionPushRetryDelayed
+    at: src/main/java/com/cmic/rocketmq/InspectionDelaySender.java
+  - topic: TID_VI_PUSHER_RECORD_PUSH_PUSHER_DELAY
+    event: LegacyRecordPushDelay
+    at: src/main/java/com/cmic/rocketmq/RecordDelaySender.java
+  configured: []
+tables:
+- name: bill_new
+  at: src/main/java/com/cmic/dao/BillDao.java
+- name: company_tab
+  at: src/main/java/com/cmic/dao/MidAuthDao.java
+- name: customer_tab
+  at: src/main/java/com/cmic/dao/MidAuthDao.java
+- name: file_down_host
+  at: src/main/java/com/cmic/dao/DccConfigDao.java

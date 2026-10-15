@@ -1,0 +1,96 @@
+meta:
+  id: table-user-qc-biz-num-auth
+  title: biz_num_auth 号码报备
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/vi/views.py
+  - vi-assets/vi-as-master/src/main/java/com/cmic/dao/UserQcDao.java
+  - vi-assets/vi-cront-jobs-master/viStrategyActivePhone.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: /tmp/vi/docs/号码表DDL.txt vs vi-assets/qa-server-master/models.py BizNumAuth：DDL 有 comment、number_status，channel_id
+  可空；ORM 未映射这两列，channel_id 为非空，num 的注释写成报备企业/省市唯一 ID。'
+table:
+  name: biz_num_auth
+  database: user_qc
+  service: qa-server
+  description: 客户业务号码报备。qa-server 行业开户接口按精确匹配（match_type=1）插入或按号码+客户删除。vi-as 全量加载做精确/前缀匹配。vi-cront-jobs
+    只读 match_type=1 的报备号码以维护活跃号码。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键，自增
+  - name: num
+    type: varchar(50)
+    nullable: false
+    desc: 报备号码或号段。DDL 唯一键 caller_num_auth_uk_num
+  - name: match_type
+    type: tinyint unsigned
+    nullable: false
+    desc: 1 精确，2 前缀（DDL：去除 86、0、+）。qa-server 写入固定为 1
+  - name: customer_id
+    type: int
+    nullable: false
+    desc: 终端客户 id
+  - name: company_id
+    type: int
+    nullable: false
+    desc: 三级企业 id
+  - name: mobile_id
+    type: int
+    nullable: false
+    desc: 一级移动 id
+  - name: channel_id
+    type: int
+    nullable: true
+    desc: 二级移动 id。DDL 可空，ORM 当非空
+  - name: comment
+    type: text
+    nullable: true
+    desc: 备注。DDL 有，ORM 未映射
+  - name: operator
+    type: varchar(255)
+    nullable: false
+    desc: 操作人。qa-server 写入 system
+  - name: number_status
+    type: tinyint
+    nullable: true
+    desc: 号码状态。DDL 注释为备用、当前不关联逻辑
+  - name: create_time
+    type: datetime
+    nullable: true
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: true
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  - name: caller_num_auth_uk_num
+    columns:
+    - num
+    unique: true
+  readers:
+  - vi-as
+  - qa-server
+  - vi-cront-jobs
+  writers:
+  - qa-server
+  retention: 随报备删除。无 TTL。
+notes:
+- 号码变更后 qa-server 写 ETCD number_key；vi-as 刷新看的是 /config/num/version。两条 key 是否为同一个待确认。
+- 全局 UNIQUE(num) 与「同一企业内唯一」的产品文案不一致，见设计文档矛盾清单。

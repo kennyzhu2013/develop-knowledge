@@ -1,0 +1,35 @@
+meta:
+  id: table-mid-strategy-qa-prompt
+  title: qa_prompt 提示词
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/utils/cache.py
+  related:
+  - data-overview
+table:
+  name: qa_prompt
+  database: mid_strategy
+  service: qa-server
+  description: 大模型提示词。按 id 读 content，对应 deepseek_prompt_id / qwen_prompt_id。本仓库只读。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: content
+    type: text
+    nullable: false
+    desc: 提示词正文
+  indexes: []
+  readers:
+  - qa-server
+  writers: []
+  retention: 待确认。其余列未知。

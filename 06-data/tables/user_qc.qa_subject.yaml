@@ -1,0 +1,166 @@
+meta:
+  id: table-user-qc-qa-subject
+  title: qa_subject 行业质检主体
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/vi/views.py
+  related:
+  - data-overview
+table:
+  name: qa_subject
+  database: user_qc
+  service: qa-server
+  description: 行业语音质检的主体账户模板。开户时按 app_id 读取，把质检模式、优先级、规则复制到新的 customer_tab。本仓库无写入。app_secret 只用于鉴权。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: app_id
+    type: varchar(100)
+    nullable: false
+    desc: 终端 ID，唯一
+  - name: app_key
+    type: varchar(50)
+    nullable: false
+    desc: 鉴权 id
+  - name: app_secret
+    type: varchar(100)
+    nullable: false
+    desc: 鉴权密钥，禁止外泄
+  - name: platform_app_id
+    type: varchar(20)
+    nullable: false
+    desc: 能开 appId，默认 retention
+  - name: mobile_name
+    type: varchar(100)
+    nullable: false
+    desc: 一级企业全称
+  - name: channel_name
+    type: varchar(100)
+    nullable: true
+    desc: 二级企业全称
+  - name: company_name
+    type: varchar(100)
+    nullable: true
+    desc: 三级企业全称
+  - name: customer_name
+    type: varchar(100)
+    nullable: true
+    desc: 终端全称
+  - name: ability
+    type: tinyint
+    nullable: true
+    desc: 1 离线 ASR，2 实时 ASR，3 质检
+  - name: ability_status
+    type: tinyint
+    nullable: true
+    desc: 能力状态
+  - name: qa_type
+    type: tinyint
+    nullable: false
+    desc: 1 普通，2 专线。默认 1
+  - name: status
+    type: tinyint
+    nullable: false
+    desc: 1 启用，2 停用，3 注销。默认 1
+  - name: priority
+    type: int
+    nullable: false
+    desc: 优先级
+  - name: rule_id
+    type: int
+    nullable: true
+    desc: 模板规则。开户时 clone 到 qa_rule
+  - name: is_segment
+    type: tinyint
+    nullable: true
+    desc: ORM 注释：-1 不涉及，0 准实时。与 customer_tab.is_segment 的 0/1/2/3 不一致，待确认
+  - name: result_push_url
+    type: varchar(255)
+    nullable: false
+    desc: 结果推送地址
+  - name: url
+    type: varchar(255)
+    nullable: false
+    desc: 复核回调地址
+  - name: customer_type
+    type: int
+    nullable: false
+    desc: 1 正式，2 试用，3 联调。默认 2
+  - name: account_type
+    type: varchar(1)
+    nullable: false
+    desc: 1 外部，2 内部。默认 1
+  - name: source
+    type: tinyint
+    nullable: false
+    desc: 1 能开，2 后台。默认 2
+  - name: bill_mode
+    type: tinyint
+    nullable: true
+    desc: 0 不批价，1 实时，2 定时
+  - name: is_bill
+    type: tinyint
+    nullable: true
+    desc: 是否批价：1 是，0 否
+  - name: bill_id
+    type: int
+    nullable: true
+    desc: 批价 ID
+  - name: total_minutes
+    type: int
+    nullable: false
+    desc: 分钟总额，默认 0
+  - name: used_minutes
+    type: float
+    nullable: true
+    desc: 已用分钟
+  - name: expire_time
+    type: datetime
+    nullable: true
+    desc: 失效时间
+  - name: stream_priority
+    type: int
+    nullable: true
+    desc: 实时分片优先级，默认 9
+  - name: is_mid_qc
+    type: tinyint
+    nullable: false
+    desc: 中间号内控，默认 0
+  - name: is_reuse_asr
+    type: tinyint
+    nullable: false
+    desc: 1 复用 ASR，0 否
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  - name: uk_app_id
+    columns:
+    - app_id
+    unique: true
+  readers:
+  - qa-server
+  writers: []
+  retention: 配置数据，无 TTL。
+notes:
+- 其余名称简称、validity、creator、comment 见 models.py QaSubject。

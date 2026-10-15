@@ -6,37 +6,38 @@ kind: stable
 audience: [all]
 owner: TODO
 status: draft
-last_verified: 2026-09-29
-related: [mn-overview, svc-mid-number-service]
-source_of_truth: []
+last_verified: 2026-10-15
+related: [mn-overview, mn-call-routing-overview, mn-number-pool-overview, svc-vi-as]
+source_of_truth:
+  - vi-assets/vi-as-master/src/main/java/com/cmic/sip/engine/DtmfEngine.java
+  - 00-context/design-docs/digest.md
 ---
 
 # 700 号码
 
-## 1. 业务定位
+这里的 700 号码是专线质检进入 700 大网的方式，不是可申请、可绑定的隐私号池。
 
-TODO：700 号码与普通中间号的差异（号段、适用行业、资质要求、计费方式）。
+## 1. 识别规则
 
-## 2. 业务流程
-
-| 流程 | 说明 | 差异点（相对普通中间号） |
+| 规则 | 来源 | 结果 |
 | --- | --- | --- |
-| 号码申请 | TODO | TODO |
-| 号码绑定 | TODO | TODO |
-| 呼叫接续 | TODO | TODO |
+| 被叫以 7001X 开头且总长不是 15 位 | 《专线质检方案+需求》§2.1.1 | xproxy 送给 vi-as |
+| 被叫总长 15 位 | 同上 | 原 700 大网，不进专线质检 |
+| 被叫以 700 开头 | `DtmfEngine.doBuildController` | bizNum 取主叫，右腿路由走 DCC/xsipproxy |
+| 去掉 5 位前缀得到真实被叫 | `BusinessEvent.processCallParameter` | 例如前缀 `70014` 后接 11 位。X 还有哪些取值待确认 |
 
-## 3. 接口
+文档里同时出现 `70011`（去掉前缀还原被叫）和 `70014`（号码表、ICSCF 的路由码）。两者是否分工待确认。
 
-| 接口 | 方法 | 说明 | 契约 |
-| --- | --- | --- | --- |
-| TODO：号码申请 | POST | | `06-data/api/`（TODO 文件名） |
+## 2. 两种接入
 
-## 4. 代码位置
-
-| 能力 | 服务 | 模块 / 包 |
+| 维度 | 7001 路由（ISBC） | IMS 实体卡签约 |
 | --- | --- | --- |
-| 号码申请 | `mid-number-service` | TODO |
+| 进入方式 | 起呼时给被叫加前缀 | 主叫或被叫签约，话路送到中间号 |
+| 匹配失败 | 设计为拒绝接续 | 文档自相矛盾：一处放通不质检，一处不接续 |
+| 回拨 | 设计为不进平台 | 设计为进入平台并可质检 |
 
-## 5. 约束与坑
+号显在正文和时序图里也不一致：正文写号显主叫，IMS 时序图写号显工作号或被叫。
 
-- TODO
+## 3. 本仓库没有的能力
+
+号码申请、绑定、解绑、回收不在 vi-as 或其它 8 个仓库的接口里。报备由 ops-platform 的报备接口写入 `biz_num_auth`，见 `06-data/api/reporting-interface-v1.0.1.md`。

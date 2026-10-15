@@ -1,0 +1,128 @@
+meta:
+  id: table-vi-cdr-qa-fail
+  title: qa_fail 专线失败重试
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/qa-server-master/apps/result_consumer.py
+  - vi-assets/qa-server-master/apps/retry_worker.py
+  related:
+  - data-overview
+conflicts:
+- 'CONFLICT: models.py 注释写 retry_status「1 重试中 3 失败」vs 分析报告「1 已投递 3 放弃」。代码常量 PENDING=0、RETRYING=1、SUCCESS=2、FAILED=3，失败时同时
+  is_done=1。以代码为准。'
+table:
+  name: qa_fail
+  database: vi_cdr
+  service: qa-server
+  description: 专线质检失败重试。引擎名 vi_cdr。唯一键 (task_id, data_id)。retry_worker 每 10 分钟扫描 status=0 且未结束的行，单批 5000。
+  columns:
+  - name: id
+    type: bigint
+    nullable: false
+    desc: 记录 id，非自增
+  - name: task_id
+    type: varchar(50)
+    nullable: false
+    desc: 总任务 id
+  - name: data_id
+    type: varchar(50)
+    nullable: false
+    desc: 子任务 id
+  - name: retry_status
+    type: smallint
+    nullable: false
+    desc: 0 待重试，1 重试中，2 成功，3 失败结束
+  - name: retry_count
+    type: smallint
+    nullable: false
+    desc: 已重试次数，上限 5
+  - name: is_done
+    type: smallint
+    nullable: false
+    desc: 0 未结束，1 结束
+  - name: retry_time
+    type: datetime
+    nullable: true
+    desc: 最近一次发起重试
+  - name: task_create_time
+    type: datetime
+    nullable: true
+    desc: 原任务创建时间
+  - name: app_id
+    type: varchar(50)
+    nullable: false
+    desc: 渠道
+  - name: qa_customer_id
+    type: int
+    nullable: false
+    desc: 终端客户
+  - name: qa_company_id
+    type: int
+    nullable: false
+    desc: 企业
+  - name: qa_channel_id
+    type: int
+    nullable: false
+    desc: 二级
+  - name: qa_mobile_id
+    type: int
+    nullable: false
+    desc: 一级
+  - name: rule_id
+    type: int
+    nullable: false
+    desc: 规则 id
+  - name: qa_type
+    type: smallint
+    nullable: false
+    desc: 1 普通，2 专线
+  - name: url
+    type: varchar(256)
+    nullable: false
+    desc: 录音地址
+  - name: caller
+    type: varchar(32)
+    nullable: false
+    desc: 主叫
+  - name: callee
+    type: varchar(32)
+    nullable: false
+    desc: 被叫
+  - name: user_data
+    type: varchar(2048)
+    nullable: false
+    desc: 透传
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  - name: uk_task_data
+    columns:
+    - task_id
+    - data_id
+    unique: true
+  readers:
+  - qa-server
+  writers:
+  - qa-server
+  retention: 成功或放弃后保留，清理策略待确认。
+notes:
+- 另有 remark1–remark4。

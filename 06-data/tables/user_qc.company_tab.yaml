@@ -1,0 +1,101 @@
+meta:
+  id: table-user-qc-company-tab
+  title: company_tab 三级企业
+  domain: data
+  kind: dynamic
+  audience:
+  - developer
+  - ops
+  - qa
+  owner: TODO
+  status: draft
+  last_verified: '2026-10-15'
+  source_of_truth:
+  - vi-assets/qa-server-master/models.py
+  - vi-assets/vi-as-master/src/main/java/com/cmic/dao/UserQcDao.java
+  - vi-assets/vi-billcenter-master/src/main/java/com/cmic/utils/CompanyTabManager.java
+  related:
+  - data-overview
+table:
+  name: company_tab
+  database: user_qc
+  service: qa-server
+  description: 三级企业。本仓库只读：vi-as 缓存企业状态与父级渠道；vi-billcenter / vi-pusher 用 app_key 做 EOPAUTH 签名，app_secret
+    只参与签名不得写入日志或文档。qa-server 开户时按 id 读取，未见 INSERT。写入方不在本仓库，待确认。
+  columns:
+  - name: id
+    type: int
+    nullable: false
+    desc: 主键
+  - name: name
+    type: varchar(100)
+    nullable: false
+    desc: 企业英文名
+  - name: nickname
+    type: varchar(100)
+    nullable: false
+    desc: 中文简称，唯一
+  - name: fullname
+    type: varchar(100)
+    nullable: false
+    desc: 中文全称
+  - name: app_key
+    type: varchar(50)
+    nullable: false
+    desc: 鉴权 id，唯一
+  - name: app_secret
+    type: varchar(100)
+    nullable: false
+    desc: 鉴权密钥，唯一。禁止落日志
+  - name: parent_id
+    type: int
+    nullable: false
+    desc: 父级，对应 channel_tab.id
+  - name: status
+    type: tinyint
+    nullable: false
+    desc: 1 启用，2 停用，3 注销。默认 3
+  - name: role_id_list
+    type: varchar(100)
+    nullable: true
+    desc: 角色 id 列表
+  - name: creator
+    type: varchar(50)
+    nullable: false
+    desc: 创建者
+  - name: comment
+    type: varchar(100)
+    nullable: true
+    desc: 备注
+  - name: create_time
+    type: datetime
+    nullable: false
+    desc: 创建时间
+  - name: update_time
+    type: datetime
+    nullable: false
+    desc: 更新时间
+  indexes:
+  - name: PRIMARY
+    columns:
+    - id
+    unique: true
+  - name: uk_nickname
+    columns:
+    - nickname
+    unique: true
+  - name: uk_app_key
+    columns:
+    - app_key
+    unique: true
+  - name: uk_app_secret
+    columns:
+    - app_secret
+    unique: true
+  readers:
+  - vi-as
+  - vi-billcenter
+  - vi-pusher
+  - qa-server
+  writers: []
+  retention: 配置数据，无 TTL。
