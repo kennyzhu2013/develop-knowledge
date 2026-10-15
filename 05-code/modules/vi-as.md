@@ -198,7 +198,7 @@ vi-bill 侧依据 MQ 中的 `isPickUP`（`callDurationS > 0 && !onlySupportG729`
 | 10 | `CallSession.consumeResponse`：200 → `callStartTime`、CALL_STATE_OK、`/call/session/pickup`、若 `maxDuration>0` 启动最大时长任务；180 → `ringTime`；181 → call_state=3 | `com/cmic/bizcontroller/callInfo/CallSession.java:CallSession.process200Invite/process180` | — |
 | 11 | 请求处理：BYE → `callEndTime`；re-INVITE → call_state=4；左腿 ACK → call_state=6，并 InCall 放 calledPlayUrl | `BaseController.processRequest` | — |
 | 12 | Dialog 终止：`SipEngine.processDialogTerminated` → `recordAndTerminated` → `BaseController.terminated`（`hasStartTerminated` 原子保护）：取消最大时长任务、`handleEndTime`、`/call/session/stop`、`handleEnd` | `SipEngine.processDialogTerminated`、`BaseController.terminated` | — |
-| 13 | `handleEnd`：`PreciseCallStateBase.getFinalState` 得 finish_type / finish_state；状态为 21（无法识别）或 0（NEED_ASR）时延迟 300ms 再判；`doParameterFinishState` 覆盖；**msId=0、storeId=0**；`submitDbUpdate` | `BaseController.handleEnd/insertAndMonitor` | 见 §12 |
+| 13 | `handleEnd`：`PreciseCallStateBase.getFinalState` 得 finish_type / finish_state；状态为 21（无法识别）或 0（NEED_ASR）时延迟 300ms 再判；`doParameterFinishState` 覆盖；`msId`/`storeId` 取自 MediaSession，会话为空时写 0；`submitDbUpdate` | `BaseController.handleEnd/insertAndMonitor` | 见 §12 |
 | 14 | 更新成功后 `BillCenterService.sendMsgToBillCenter` 发 RocketMQ | `DbAsyncService`、`com/cmic/service/BillCenterService.java` | 发送异常 → 写 `bill_fail` |
 
 ### 4.5 ErrorController（拦截/账户无效）流程
@@ -333,7 +333,7 @@ vi-as 不直接调用 vi-bill、qa-server、vi-pusher 的 HTTP 接口。
 | 插入 | `original_caller_number`、`caller_number`、`original_callee_number`、`callee_number`、`biz_number` | 原始/处理后主被叫、业务号码（700 号码） |
 | 插入 | `handle_start_time` | AS 收到 INVITE 时间（截断到秒） |
 | 插入 | `call_in_province_id`、`call_out_province_id`、`call_in_700_area_code`、`call_in_area_code`、`call_out_area_code` | 主叫/被叫省份、700 号码呼入区号（取原始 R-URI）、主/被叫区号 |
-| 更新 | `ms_id`、`pfs_id` | 媒体服务器 id、存储 id（BaseController 恒为 0，ErrorController/NewTwoLegController 取 MediaSession） |
+| 更新 | `ms_id`、`pfs_id` | 媒体服务器 id、存储 id。`BaseController.insertAndMonitor` 在 `mediaSession == null` 时写 0，有会话时写 serverId/storeId。`B2BWithBillController` 恒写 0。`ErrorController`、`NewTwoLegController` 同样按会话取值 |
 | 更新 | `handle_end_time`、`call_forward_time`、`first_resp_time`、`ring_time`、`call_start_time`、`call_end_time` | 处理结束、转发时间、首响应、振铃、接通、挂机时间 |
 | 更新 | `call_duration_s`、`call_duration_m` | 通话时长秒/分钟（向上取整，最小 1） |
 | 更新 | `call_state` | 见 §9 CALL_STATE |
@@ -384,7 +384,7 @@ vi-as 不直接调用 vi-bill、qa-server、vi-pusher 的 HTTP 接口。
 ### 8.4 MongoDB / 文件存储
 
 - MongoDB：无。
-- 录音文件：vi-as 不落盘，录音由 vi-media → vi-codec → vi-merge → vi-mdown → PFS 完成；vi-as 只把 vi-media 返回的 storeId 写入 `pfs_id`（仅部分 Controller）。
+- 录音文件：vi-as 不落盘，录音由 vi-media → vi-codec → vi-merge → vi-mdown → PFS 完成。有媒体会话时，`BaseController`、`ErrorController`、`NewTwoLegController` 把 serverId/storeId 写入话单；`B2BWithBillController` 恒写 0。
 - 本地文件：`version` 文件（版本号）；`/var/log/vi-as/` 日志，其中 dblog 是话单入库失败的兜底数据源。
 
 ---
@@ -508,7 +508,7 @@ SIP/Q.850 → FinishState 映射（`FinishState.CAUSE_FINISH_STATE`）：SIP 404
 
 1. **录音无配置开关**：`BusinessEvent.setRecordParams` 中 `needRecord=true` 硬编码；客户的 `ability`/`ability_status` 等质检能力字段 vi-as 不使用。
 2. **前缀匹配 bug**：`AuthConfigService.reloadNumConf` 重建前缀表时用了 `new TreeMap<>()`（自然序），覆盖了原先按长度降序的 comparator，导致迭代为字典序，**短前缀会先命中，不是最长前缀匹配**；而原 comparator 只比较长度，等长 key 会被视为相等而互相覆盖。两种实现都有问题。缓存 HashMap 引用替换非 volatile，存在可见性问题。
-3. **话单 ms_id / pfs_id**：`BaseController.insertAndMonitor` 恒写 0，而 `ErrorController`、`NewTwoLegController.fillBill` 使用 MediaSession 的 serverId/storeId，主流程话单丢失媒体/存储定位信息（下游如何定位录音待确认，可能依据 billId）。
+3. **话单 ms_id / pfs_id**：`BaseController.insertAndMonitor` 只在没有媒体会话时写 0，有会话时写 `MediaSession` 的 serverId/storeId。恒写 0 的是 `B2BWithBillController`（有话单、不录音）。媒体创建失败的主流程话单同样没有存储定位。下游是否只靠 billId 找录音，待确认。
 4. **右腿省份字段 bug**：`BillNew.setRightLegInfo` 的固话分支写的是 `callInProvinceId`，应为 `callOutProvinceId`。
 5. **ICSCF 缓存 bug**：`ChinaMobileIcscfCacheService` 构建时把 province 设为字面量字符串 `"province"`。
 6. **号段缓存**：`PhoneSegmentCacheService.reload` 不清理旧条目；`getAreaCodeFromPhoneSegment` 可能 NPE。
@@ -553,7 +553,7 @@ SIP/Q.850 → FinishState 映射（`FinishState.CAUSE_FINISH_STATE`）：SIP 404
 
 1. `BaseRocketMQService` 的来源（依赖 jar 还是缺失提交）、生产者的 group/重试配置。
 2. `bill_fail` 记录是否由其他服务或脚本扫描补发 MQ；dblog 中失败 SQL 是否有回放工具。
-3. BaseController 主流程 `ms_id`/`pfs_id` 恒为 0，下游（vi-bill / vi-merge）如何定位录音文件（按 billId？）。
+3. 有媒体会话时 `BaseController` 会写 `ms_id`/`storeId`；`B2BWithBillController` 恒为 0。下游（vi-bill / vi-merge）在这两种话单上如何定位录音文件（按 billId？）。
 4. vi-media 创建失败时 BaseController 是否继续接续呼叫（不录音）是否为预期行为。
 5. 策略服务超时/异常时是放行还是拦截；策略服务对应哪个仓库。
 6. 被叫为 700 时 bizNum 取主叫号码的业务含义（GZH/外呼场景？）。
