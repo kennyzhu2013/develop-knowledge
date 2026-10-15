@@ -26,7 +26,7 @@ source_of_truth:
 | 呼叫建立 | vi-as `DbAsyncService.submitDbInsert` | `vi_bill.bill_new` 初始行，带四级企业 id 和 appId |
 | 呼叫结束 | `BaseController.handleEnd` | 计算 finish_type / finish_state。状态 21 或 0 时延迟 300ms 再判 |
 | 通知 | `BillCenterService.sendMsgToBillCenter` | 事件 `CallBillCompleted`。失败写入 `bill_fail` |
-| 合音关联 | vi-billcenter | 把合音文件时长、录音位置补到质检请求，而不是在 vi-as 里填 storeId（代码把 msId、storeId 置 0） |
+| 合音关联 | vi-billcenter | 把合音文件时长、录音位置补到质检请求。vi-as 的 `BaseController` 在有媒体会话时写入 serverId/storeId，没有会话时写 0；`B2BWithBillController` 恒写 0 |
 | 质检回写 | vi-billcenter 消费 qa-server 回调 | 质检结果再发给 vi-pusher |
 
 finish_state 的优先级在 `PreciseCallStateBase.getFinalState`。策略拦截是 22，账户无效是 99。完整枚举见 `05-code/modules/vi-as.md`。
