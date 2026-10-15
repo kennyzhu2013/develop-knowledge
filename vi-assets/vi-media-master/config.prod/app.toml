@@ -1,0 +1,168 @@
+###############################################
+#            API、Metrics settings            #
+###############################################
+
+# Address of the HTTP
+apiAddress = "{{ip}}:9060"
+# Path to the server key
+serverKey = ""
+# Path to the server certificate
+serverCert = ""
+
+###############################################
+#                IMS settings                 #
+###############################################
+
+[ims]
+# IMS NIC address
+host = "{{imsip}}"
+# IMS NIC start port
+start = 10000
+# IMS NIC end port
+end = 30000
+
+###############################################
+#              Registry settings              #
+###############################################
+
+[registry]
+# The service cluster name
+clusterName = "vii"
+# The application name
+appName = "{{appName}}"
+# The application unique identifier
+appId = "{{id}}"
+# The weight for the application
+weight = 100
+# Address of the remote register center
+address = ["{{etcd1}}", "{{etcd2}}", "{{etcd3}}"]
+
+###############################################
+#                 MQ settings                 #
+###############################################
+
+[message]
+# The namespace of the message queue
+namespace = "VI"
+# The acl for the message queue
+accessKey = "{{rocketmq_ak}}"
+secretKey = "{{rocketmq_sk}}"
+# The max attempts of the message produce
+maxAttempts = 3
+# The topic for the message exchange
+topic = "TID_VI_MEDIA_RECORD_MERGE_NORMAL"
+# The proxy endpoints of the message queue
+endpoint = "{{rocketmq_endpoints}}"
+
+###############################################
+#             MediaSource settings            #
+###############################################
+
+[mediaSource]
+# Inbound media stream
+inbound.appName = "com.cmic.xmts"
+inbound.uri = "/livestream/subscribe"
+# Stream write timeout, unit seconds
+inbound.writeTimeout = 3
+# Connection handshake timeout, unit seconds
+inbound.handshakeTimeout = 5
+# Outbound media stream
+outbound.clusterName = "{{outboundCluster}}"
+outbound.appName = "{{outboundAppName}}"
+outbound.uri = "/media/stream"
+outbound.tts = "/media/voice/tts"
+# Stream write timeout, unit milliseconds
+outbound.writeTimeout = 30
+# Connection handshake timeout, unit seconds
+outbound.handshakeTimeout = 5
+
+###############################################
+#               Cache settings                #
+###############################################
+
+[cache]
+# Cache acceleration, CDN
+cdn.startup = {{cdnStartup}}
+cdn.clusterName = "{{cdnCluster}}"
+cdn.appName = "com.cmic.cdn"
+cdn.uri = "/audio/accelerate"
+cdn.audioData = "/audio/get"
+cdn.videoData = "/video/get"
+# Request timeout, unit seconds
+cdn.audioTimeout = 2
+cdn.videoTimeout = 2
+# Load Balancer, supported ROUND_ROBIN、HASH_RING
+cdn.audioLoadBalancer = "ROUND_ROBIN"
+cdn.videoLoadBalancer = "HASH_RING"
+# The maximum number of requests allowed to pass through when the CircuitBreaker is half-open
+# If MaxRequests is 0, the CircuitBreaker allows only 1 request
+circuitBreaker.maxRequests = 20
+# The cyclic period of the closed state for the CircuitBreaker to clear the internal Counts
+# If Interval is less than or equal to 0, the CircuitBreaker doesn't clear internal Counts during the closed state, unit seconds
+circuitBreaker.interval = 5
+# The period of the open state, after which the state of the CircuitBreaker becomes half-open
+# If Timeout is less than or equal to 0, the timeout value of the CircuitBreaker is set to 60 seconds
+circuitBreaker.timeout = 3
+# the consecutive failure count, trigger the CircuitBreaker to open when exceeds a certain threshold
+circuitBreaker.consecutiveFailures = 10
+# The base root path for the audio/video loading
+baseAudioPath = "{{audioPath}}"
+baseVideoPath = "{{videoPath}}"
+# Maximum audio cache size, unit MB
+maxAudioCapacity = 4096
+# Maximum video cache capacity
+maxVideoCapacity = 512
+
+###############################################
+#              Storage settings               #
+###############################################
+
+[storage]
+# Memory index database path for three stages: ring, call
+db.mem.ring = "{{idxDir}}/db/mem/ring"
+db.mem.call = "{{idxDir}}/db/mem/call"
+# Disk index database path for three stages: ring, call
+db.disk.ring = "{{idxDir}}/db/disk/ring"
+db.disk.call = "{{idxDir}}/db/disk/call"
+# Index database rewrite cron
+db.rewrite = "0 0 3 * * ?"
+# The memory path for storing media data in three stages: ring, call
+data.mem.ring = "/tmp/media/ring"
+data.mem.call = "/tmp/media/call"
+# The memory lifeSpan for the media data in three stages: ring, call. Unit minute
+data.mem.lifeSpan.ring = 5
+data.mem.lifeSpan.call = 10
+# The disk path for storing media data in three stages: ring, call
+data.disk.ring = "/data/media/ring"
+data.disk.call = "/data/media/call"
+# The disk lifeSpan for the media data in three stages: ring, call. Unit minute
+data.disk.lifeSpan.ring = 20
+data.disk.lifeSpan.call = {{diskLifeSpan}}
+# Media data cleanup cron
+data.cleanup = "0 0 4 * * ?"
+
+###############################################
+#               Monitor settings              #
+###############################################
+
+[monitor]
+# Enable CPU monitoring for application node status to avoid overload
+cpu.enable = false
+# CPU monitoring interval, unit seconds
+cpu.tick = 5
+# CPU stat time range
+cpu.interval = 10
+# CPU threshold
+cpu.threshold = 50.0
+
+###############################################
+#               Logger settings               #
+###############################################
+
+[logger]
+# Log level of the server, available values: debug、info、warn、error
+level = "info"
+# Log file name
+file = "all.log"
+# Directory of log messages
+path = "/var/log/vi-media"

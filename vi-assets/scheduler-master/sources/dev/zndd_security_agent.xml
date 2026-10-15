@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="attribute" op="set" type = "1">
+            <attribute name="qcResult">1</attribute>
+        </action>
+        <action application="keyword" op="match"/>
+    </event>
+    <event name="keyword_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else-if expression="${matchedWord}.size() == 0"> <!-- 未命中 执行下一步 -->
+                <action application="rt_qc" op="sendToMQ"/>
+                <action application="word_group" op="match"/>
+            </else-if>
+            <else>
+                <action application="process" op="success"/> <!-- 命中 正常结束 -->
+            </else>
+        </condition>
+    </event>
+
+    <event name="word_group_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${wordGroupStatus}) and (T(Integer).valueOf(${wordGroupResult})) == 1"> <!-- 命中违规 -->
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                </action>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="rt_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${rtStatus}) and (T(Integer).valueOf(${rtFirstLabel})) == 4"> <!-- 命中涉诈 -->
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                </action>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="end_event">
+        <condition>
+            <if expression="#calculate.notNull(${wordGroupStatus}, ${rtStatus}) and #calculate.isTrue(${rtStatus}) and #calculate.isTrue(${wordGroupStatus})">
+                <action application="process" op="success"/>
+            </if>
+            <if expression="#calculate.notNull(${wordGroupStatus}, ${rtStatus}) and (#calculate.isFalse(${rtStatus}) or #calculate.isFalse(${wordGroupStatus}))">
+                <action application="process" op="stop"/>
+            </if>
+        </condition>
+    </event>
+</events>

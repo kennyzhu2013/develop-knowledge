@@ -1,0 +1,21 @@
+dataSources:
+  ds_0: !!com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://{{db_bill}}/vi_bill?characterEncoding=utf8&amp&useSSL=false&connectTimeout=10000&socketTimeout=10000
+    username: {{db_bill_username}}
+    password: {{db_bill_password}}
+    initialSize: 10
+    maxActive: 40
+    validationQuery: select 1
+    maxWait: 1000
+
+
+shardingRule:
+  defaultDatabaseStrategy:
+    none:
+  defaultTableStrategy:
+    none:
+  defaultKeyGeneratorClassName: io.shardingsphere.core.keygen.DefaultKeyGenerator
+  
+props:
+  sql.show: false

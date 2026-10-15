@@ -1,0 +1,45 @@
+appInfo:
+  host: {{ip}}
+  port: 9033
+  version: 1.0
+  registry:
+    clusterName: vii
+    serverName: com.cmic.vi.merge
+    serverId: {{id}}
+    address:
+      - {{etcd1}}
+      - {{etcd2}}
+      - {{etcd3}}
+  maxSession: 2000
+
+logInfo:
+  logLevel: info
+  logPath: /var/log/vi-merge
+  logFile: all.log
+  logMaxFiles: 50
+
+rocketMq:
+  namespace: VI
+  accessKey: {{rocketmq_ak}}
+  secretKey: {{rocketmq_sk}}
+  maxAttempts: 3
+  topic: TID_VI_MERGE_MSG_BILL_NORMAL
+  endpoint: {{rocketmq_endpoints}}
+
+outbound:
+  cluster: vii
+  appName: com.cmic.vi.mdownload
+  uri: /inner/media/upload
+  timeout: 10
+
+bufferIO:
+  buffer2DiskMinutes: 4
+  diskRwMax: 300
+  memUsedPercent: 50
+  decisionType: 0
+
+ffmpeg:
+  staticPath: /home/production/vi-merge/ffmpeg
+
+bizSetting:
+  finalSuffixMp3: false

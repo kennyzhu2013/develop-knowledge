@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="attribute" op="set" type = "2">
+            <attribute name="testRedis">1</attribute>
+        </action>
+        <condition>
+            <if expression="#call.testRedis == '1'" application = "redisCondition">
+                <action application="shard" op="sendShard"/>
+            </if>
+        </condition>
+    </event>
+    <event name="shard_send_resp">
+        <condition>
+            <if expression="#job.attributes['endFlag']" application = "taskCondition">
+                <action application="asr" op="sendToMq"/>
+            </if>
+        </condition>
+<!--        <condition>-->
+<!--            <if expression="#job.attributes['endFlag']" application = "taskCondition">-->
+<!--                <action application="asr" op="sendToMq"/>-->
+<!--            </if>-->
+<!--        </condition>-->
+    </event>
+    <event name="asr_resp">
+        <action application="shard" op="updateAsrText"/>
+        <action application="process" op="success"/>
+        <action application="shard" op="finishShard"/>
+    </event>
+</events>

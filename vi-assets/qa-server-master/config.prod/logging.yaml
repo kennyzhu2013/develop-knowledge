@@ -1,0 +1,105 @@
+version: 1
+disable_existing_loggers: False
+
+# 定义日志输出格式，可以有多种格式输出
+formatters:
+  simple:
+    format: "%(asctime)s %(levelname)s %(module)s.%(funcName)s:%(lineno)d - %(message)s"
+  error:
+    format: "%(asctime)s %(levelname)s %(module)s.%(funcName)s:%(lineno)d - %(message)s"
+
+# 定义不同的handler，输出不同等级的日志消息
+handlers:
+  console:
+    class: logging.StreamHandler # 输出到控制台
+    level: DEBUG
+    formatter: simple
+    stream: ext://flask.logging.wsgi_errors_stream # 监听flask日志
+  info_file_handler:
+    class: logging.handlers.RotatingFileHandler # 输出到文件
+    level: INFO
+    formatter: simple
+    filename: /var/log/qa-server/info.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20 #most 20 extensions
+    encoding: utf8
+  error_file_handler:
+    class: logging.handlers.RotatingFileHandler # 输出到文件
+    level: ERROR
+    formatter: error
+    filename: /var/log/qa-server/errors.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20
+    encoding: utf8
+  gunicorn_console:
+    class: logging.StreamHandler
+    formatter: simple
+    stream: ext://sys.stderr
+  gunicorn_error_console:
+    class: logging.StreamHandler
+    formatter: error
+    stream: ext://sys.stderr
+  all_file_handler:
+    class: logging.handlers.RotatingFileHandler # 输出到文件
+    level: INFO
+    formatter: simple
+    filename: /var/log/qa-server/all.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20 #most 20 extensions
+    encoding: utf8
+  realtime_file_handler:
+    class: logging.handlers.RotatingFileHandler # 输出到文件
+    level: INFO
+    formatter: simple
+    filename: /var/log/qa-server/realtime.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20 #most 20 extensions
+    encoding: utf8
+  result_file_handler:
+    class: logging.handlers.RotatingFileHandler # 输出到文件
+    level: INFO
+    formatter: simple
+    filename: /var/log/qa-server/result.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20 #most 20 extensions
+    encoding: utf8
+  flush_file_handler:
+    class: logging.handlers.RotatingFileHandler # 输出到文件
+    level: INFO
+    formatter: simple
+    filename: /var/log/qa-server/flush.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20 #most 20 extensions
+    encoding: utf8
+# 启用handler
+loggers:
+  app:
+    handlers: [console,info_file_handler,error_file_handler]
+    level: INFO
+    propagate: True
+  gunicorn.error:
+    handlers: [ gunicorn_error_console ]
+    level: INFO
+    propagate: True
+    qualname: "gunicorn.error"
+  gunicorn.access:
+    handlers: [ gunicorn_console ]
+    level: INFO
+    propagate: True
+    qualname: "gunicorn.access"
+  all:
+    handlers: [ all_file_handler ]
+    level: INFO
+    propagate: True
+  realtime:
+    handlers: [ realtime_file_handler ]
+    level: INFO
+    propagate: True
+  result:
+    handlers: [ result_file_handler ]
+    level: INFO
+    propagate: True
+  flush:
+    handlers: [ flush_file_handler ]
+    level: INFO
+    propagate: True

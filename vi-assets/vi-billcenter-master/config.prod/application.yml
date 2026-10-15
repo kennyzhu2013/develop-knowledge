@@ -1,0 +1,103 @@
+# tomcat配置
+server:
+  port: 9277
+  address:  {{ip}}
+
+
+rocketmq:
+  #生产者配置
+  producer:
+    endpoints: {{rocketmqIps}}
+    access-key: {{rocketmqAccess}}
+    secret-key: {{rocketmqSecret}}
+    max-attempts: 3
+    request-timeout: 5
+  push-consumer:
+    access-key: {{rocketmqAccess}}
+    secret-key: {{rocketmqSecret}}
+    endpoints: {{rocketmqIps}}
+
+
+spring:
+  #json时区
+  jackson:
+    time-zone: GMT+8
+
+  datasource:
+    dynamic:
+      primary: user_qc
+      datasource:
+        user_qc:
+          url: jdbc:mysql://{{db_auth}}/user_qc?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+          username: {{db_auth_username}}
+          password: {{db_auth_password}}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          type: com.alibaba.druid.pool.DruidDataSource  # 这行没有冒号结尾
+          druid: # 对齐到type的层级
+            initial-size: 1
+            min-idle: 5
+            max-active: 50
+            max-wait: 1000
+            validation-query: SELECT 1
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+        dcc_conf:
+          url: jdbc:mysql://{{db_conf}}/dcc_conf?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+          username: {{db_conf_username}}
+          password: {{db_donf_password}}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          type: com.alibaba.druid.pool.DruidDataSource  # 这行没有冒号结尾
+          druid: # 对齐到type的层级
+            initial-size: 1
+            min-idle: 5
+            max-active: 50
+            max-wait: 1000
+            validation-query: SELECT 1
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+        vi_bill:
+          url: jdbc:mysql://{{db_bill}}/vi_bill?characterEncoding=utf8&amp&useSSL=false
+          username: {{db_bill_username}}
+          password: {{db_bill_password}}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          type: com.alibaba.druid.pool.DruidDataSource  # 这行没有冒号结尾
+          druid: # 对齐到type的层级
+            initial-size: 1
+            min-idle: 5
+            max-active: 50
+            max-wait: 1000
+            validation-query: SELECT 1
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+
+management:
+  server:
+    port: 19277
+    address: 0.0.0.0
+  endpoints:
+    enabled-by-default: false
+    web:
+      base-path: /manage/info
+      exposure:
+        include: prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+
+
+parameters-config:
+  # 1:南方节点  2： 北方节点
+  location: {{location}}
+  # etcd的ip和端口
+  etcd: http://{{etcd1}},http://{{etcd2}},http://{{etcd3}}
+  version: 1.0
+  media-name: com.cmic.media
+  httpproxy-name: {{vi_bill_billproxy_app_name}}
+  qc-server-create-url: http://{{qa_server}}/v1/task/customize
+  cluster-name: vi
+  billConsumerCount: 50
+  recordConsumerCount: 40
+  delayRecordConsumerCount: 30

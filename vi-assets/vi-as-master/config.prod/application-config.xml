@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <!-- 必填 -->
+    <location>{{location}}</location>
+    <!--不能重复 -->
+    <serverId>{{id}}</serverId>
+    <asListen>{{imsip}}:5080</asListen>
+    <billTrace>true</billTrace>
+    <httpPort>5287</httpPort>
+    <httpIp>{{ip}}</httpIp>
+    <billConfigPath>config/vi_bill.yaml</billConfigPath>
+    <confDbConfigPath>config/vi_conf.yaml</confDbConfigPath>
+    <mssSipStackPath>config/mss-sip-stack.properties</mssSipStackPath>
+    <etcd>http://{{etcd1}},http://{{etcd2}},http://{{etcd3}}</etcd>
+    <etcdNodeName>vi</etcdNodeName>
+    <publishMQThreadPoolSize>16</publishMQThreadPoolSize>
+    <publishMQThreadPoolQueueSize>10000</publishMQThreadPoolQueueSize>
+    <SLBAddress>{{slb}}</SLBAddress>
+    <!-- 0-无代理模式 1-内外网代理模式 2-内外网代理11位手机号模拟700号码模式 3-SIPP直接压测AS模式 -->
+    <proxyMode>{{proxy_mode | default('0') }}</proxyMode>
+    <httpProxyName>{{vi_as_httpproxy_app_name}}</httpProxyName>
+    <!--0: 正常模式 1：有话单日志兜底 2：无话单日志兜底-->
+    <startMode>{{startMode}}</startMode>
+</config>

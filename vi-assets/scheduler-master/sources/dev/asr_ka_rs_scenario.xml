@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="asr" op="sendToMQ"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="desensitization" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+    <event name="desensitization_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${desensitizationStatus})">
+                <action application="keywordAnalysis" op="sendToMQ"/>
+                <action application="keyword_rs" op="match"/>
+                <action application="scenario" op="sendToMQ"/>
+            </if>
+            <else>
+                <action application="process" op="stop"/>
+            </else>
+        </condition>
+    </event>
+    <event name="keyword_analysis_resp">
+        <action application="event" op="sendToEvent" data="ka_rs_scenario_resp"/>
+    </event>
+    <event name="keyword_rs_resp">
+        <action application="event" op="sendToEvent" data="ka_rs_scenario_resp"/>
+    </event>
+    <event name="scenario_resp">
+        <action application="event" op="sendToEvent" data="ka_rs_scenario_resp"/>
+    </event>
+    <event name="ka_rs_scenario_resp">
+        <condition>
+            <if expression="#calculate.notNull(${keywordRSStatus}, ${scenarioStatus}, ${keywordAnalysisStatus})">
+                <action application="process" op="success"/>
+            </if>
+        </condition>
+    </event>
+</events>
+

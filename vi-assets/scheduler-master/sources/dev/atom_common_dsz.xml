@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="atom_process" op="atom_initial"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else-if expression="#calculate.lt(#calculate.length(${asrText}), 45)">
+                <action application="process" op="fail">
+                    <attribute name="model">ASR</attribute>
+                    <attribute name="errorMessage">转写文字长度小于45个字符</attribute>
+                </action>
+            </else-if>
+            <else>
+                <action application="desensitization" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+    <event name="desensitization_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${desensitizationStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else>
+                <action application="atom_process" op="atom_handler">
+                    <attribute name="dify_model">cmic_internal_collection</attribute>
+                </action>
+            </else>
+        </condition>
+    </event>
+    <event name="script_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="keyword_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="keyword_analysis_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="scenario_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="vfd_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="vp_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="emotion_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="word_regex_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="identity_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="aigs_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="deepseek_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="word_group_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="qwen_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="rt_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="rt_fraud_review_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="cs_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="text_sml_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="market_call_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="keyword_rs_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="dify_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="deal_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+    <event name="rag_resp">
+        <action application="atom_process" op="check_progress"/>
+    </event>
+</events>

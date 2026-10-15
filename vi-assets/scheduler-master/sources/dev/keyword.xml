@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <condition>
+            <if expression="#calculate.gt(#calculate.words(${asrText}), 10)">
+                <action application="keyword" op="match"/>
+            </if>
+            <else>
+                <action application="process" op="fail"/>
+            </else>
+        </condition>
+    </event>
+    <event name="keyword_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${keywordStatus})">
+                <action application="process" op="success"/>
+            </if>
+            <else>
+                <action application="process" op="fail"/>
+            </else>
+        </condition>
+    </event>
+</events>

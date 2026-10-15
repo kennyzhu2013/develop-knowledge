@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="asr" op="sendToMQ"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>

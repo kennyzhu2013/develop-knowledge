@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="text_sml" op="sendToMQ"/>
+    </event>
+    <event name="text_sml_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${content_similarity_qc_status})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>

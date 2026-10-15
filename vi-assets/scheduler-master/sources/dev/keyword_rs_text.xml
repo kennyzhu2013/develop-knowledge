@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="keyword_rs" op="match"/>
+    </event>
+    <event name="keyword_rs_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordRSStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>

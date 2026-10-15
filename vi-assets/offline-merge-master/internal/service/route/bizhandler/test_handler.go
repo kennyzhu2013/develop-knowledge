@@ -1,0 +1,44 @@
+package bizhandler
+
+import (
+	"net/http"
+	"offline-merge/conf"
+	"offline-merge/internal/pkg/log"
+	"offline-merge/internal/processor"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+type HttpHandler struct {
+}
+
+func (h *HttpHandler) TestHandler(ctx *gin.Context) {
+	log.InfoF("testHandler ")
+
+	//正常左右两段+早期
+	//messageBody := "{\"sessionId\":\"257694743411105801\",\"callerNum\":\"2061790038\",\"calleeNum\":\"15521476275\",\"userId\":\"333\",\"startTime\":1753687681,\"address\":\"127.0.0.1:18080\",\"version\":\"4.0.3\",\"volume\":\"/nfsdisk/store\",\"path\":\"336/2025-07-28/1753687680\",\"callerAudioFile\":\"Caller_257694743411105807_20250728152801.wav,1Caller_257694743411105807_20250728152801.wav\",\"calleeAudioFile\":\"Callee_257694743411105807_20250728152801.wav,1Callee_257694743411105807_20250728152801.wav\",\"callerVideoFile\":\"\",\"calleeVideoFile\":\"\",\"earlyAudioFile\":\"Early_257694743411105807.wav\",\"options\":\"{\\\\\\\"recordSuffix\\\\\\\":\\\\\\\"wav\\\\\\\",\\\\\\\"reverseLeg\\\\\\\":false,\\\\\\\"separateLeg\\\\\\\":false,\\\\\\\"isRecord\\\\\\\":true,\\\\\\\"separateEarly\\\\\\\":false}\", \t\"callerAudioRtpCount\": 984, \t\"calleeAudioRtpCount\": 273, \t\"callerAudioInCallRtpCount\": 268, \t\"calleeAudioInCallRtpCount\": 267, \t\"callerAudioRecordCount\": 268, \t\"calleeAudioRecordCount\": 267, \t\"callerVideoRtpCount\": 0, \t\"calleeVideoRtpCount\": 0, \t\"callerVideoRecordCount\": 0, \t\"calleeVideoRecordCount\": 0 }"
+	//左右腿有差异，一边1条，一边2条
+	//messageBody = "{\"sessionId\":\"257694743411105807\",\"callerNum\":\"2061790038\",\"calleeNum\":\"15521476275\",\"userId\":\"333\",\"startTime\":1753687681,\"address\":\"127.0.0.1:18080\",\"version\":\"4.0.3\",\"volume\":\"/nfsdisk/store\",\"path\":\"336/2025-07-28/1753687680\",\"callerAudioFile\":\"Caller_257694743411105807_20250728152801.wav,1Caller_257694743411105807_20250728152801.wav\",\"calleeAudioFile\":\"Callee_257694743411105807_20250728152801.wav\",\"callerVideoFile\":\"\",\"calleeVideoFile\":\"\",\"earlyAudioFile\":\"Early_257694743411105807.wav\",\"options\":\"{\\\\\\\"recordSuffix\\\\\\\":\\\\\\\"wav\\\\\\\",\\\\\\\"reverseLeg\\\\\\\":false,\\\\\\\"separateLeg\\\\\\\":false,\\\\\\\"isRecord\\\\\\\":true,\\\\\\\"separateEarly\\\\\\\":false}\", \t\"callerAudioRtpCount\": 984, \t\"calleeAudioRtpCount\": 273, \t\"callerAudioInCallRtpCount\": 268, \t\"calleeAudioInCallRtpCount\": 267, \t\"callerAudioRecordCount\": 268, \t\"calleeAudioRecordCount\": 267, \t\"callerVideoRtpCount\": 0, \t\"calleeVideoRtpCount\": 0, \t\"callerVideoRecordCount\": 0, \t\"calleeVideoRecordCount\": 0 }"
+
+	//newMsg := "{\"sessionId\":\"70000000000000290748422749691914\",\"callerNum\":\"19802021851\",\"calleeNum\":\"15920450142\",\"userId\":\"CS002\",\"msId\":\"1\",\"address\":\"10.34.108.19:9060\",\"version\":\"1.0.0\",\"volume\":\"\",\"path\":\"CS002/2026-05-09/1778314591\",\"callerAudioFile\":\"Caller_70000000000000290748422749691914_20260509161631.amr\",\"calleeAudioFile\":\"\",\"callerVideoFile\":\"\",\"calleeVideoFile\":\"\",\"earlyAudioFile\":\"\",\"options\":\"{\\\"recordSuffix\\\":\\\"wav\\\",\\\"reverseLeg\\\":false,\\\"separateLeg\\\":false,\\\"isRecord\\\":true,\\\"separateEarly\\\":false,\\\"bindId\\\":\\\"\\\"}\",\"config\":\"{\\\"calleeNum\\\":\\\"15920450142\\\",\\\"callerNum\\\":\\\"19802021851\\\",\\\"initialSegments\\\":20,\\\"mode\\\":\\\"RAW\\\",\\\"period\\\":\\\"InCall\\\",\\\"platformId\\\":\\\"30\\\",\\\"sampleRate\\\":16000,\\\"secretNum\\\":\\\"19802021851\\\",\\\"segments\\\":20,\\\"sessionId\\\":\\\"70000000000000290748422749691914\\\",\\\"source\\\":1,\\\"startTime\\\":\\\"2026-05-09 16:16:31\\\",\\\"url\\\":\\\"INSPECT\\\",\\\"userData\\\":\\\"{\\\\\\\"callerNumber\\\\\\\":\\\\\\\"19802021851\\\\\\\",\\\\\\\"calleeNumber\\\\\\\":\\\\\\\"15920450142\\\\\\\",\\\\\\\"handleStartTime\\\\\\\":\\\\\\\"2026-05-09 16:16:31\\\\\\\",\\\\\\\"companyId\\\\\\\":15,\\\\\\\"customerId\\\\\\\":30,\\\\\\\"asCallBackUrl\\\\\\\":\\\\\\\"http://10.34.108.2:5061/vi/resultCallBack\\\\\\\"}\\\",\\\"userId\\\":\\\"30\\\"}\",\"startTime\":1778314591,\"callerAudioRtpCount\":165,\"calleeAudioRtpCount\":242,\"callerAudioInCallRtpCount\":165,\"calleeAudioInCallRtpCount\":242,\"callerAudioRecordCount\":373,\"calleeAudioRecordCount\":0,\"callerVideoRtpCount\":0,\"calleeVideoRtpCount\":0,\"callerVideoRecordCount\":0,\"calleeVideoRecordCount\":0}"
+
+	//g729测试，source=1
+	//g729Msg := "{\"sessionId\":\"70000000000000290748422749691914\",\"callerNum\":\"19802021851\",\"calleeNum\":\"15920450142\",\"userId\":\"CS002\",\"msId\":\"1\",\"address\":\"127.0.0.1:18080\",\"version\":\"1.0.0\",\"volume\":\"\",\"path\":\"CS002/2026-05-09/1778314591\",\"callerAudioFile\":\"Caller_70000000000000290748422749691914_20260509161631.g729\",\"calleeAudioFile\":\"Callee_70000000000000290748422749691914_20260509161631.g729\",\"callerVideoFile\":\"\",\"calleeVideoFile\":\"\",\"earlyAudioFile\":\"\",\"options\":\"{\\\"recordSuffix\\\":\\\"wav\\\",\\\"reverseLeg\\\":false,\\\"separateLeg\\\":false,\\\"isRecord\\\":true,\\\"separateEarly\\\":false,\\\"bindId\\\":\\\"\\\"}\",\"config\":\"{\\\"calleeNum\\\":\\\"15920450142\\\",\\\"callerNum\\\":\\\"19802021851\\\",\\\"initialSegments\\\":20,\\\"mode\\\":\\\"RAW\\\",\\\"period\\\":\\\"InCall\\\",\\\"platformId\\\":\\\"30\\\",\\\"sampleRate\\\":16000,\\\"secretNum\\\":\\\"19802021851\\\",\\\"segments\\\":20,\\\"sessionId\\\":\\\"70000000000000290748422749691914\\\",\\\"source\\\":1,\\\"startTime\\\":\\\"2026-05-09 16:16:31\\\",\\\"url\\\":\\\"INSPECT\\\",\\\"userData\\\":\\\"{\\\\\\\"callerNumber\\\\\\\":\\\\\\\"19802021851\\\\\\\",\\\\\\\"calleeNumber\\\\\\\":\\\\\\\"15920450142\\\\\\\",\\\\\\\"handleStartTime\\\\\\\":\\\\\\\"2026-05-09 16:16:31\\\\\\\",\\\\\\\"companyId\\\\\\\":15,\\\\\\\"customerId\\\\\\\":30,\\\\\\\"asCallBackUrl\\\\\\\":\\\\\\\"http://10.34.108.2:5061/vi/resultCallBack\\\\\\\"}\\\",\\\"userId\\\":\\\"30\\\"}\",\"startTime\":1778314591,\"callerAudioRtpCount\":165,\"calleeAudioRtpCount\":242,\"callerAudioInCallRtpCount\":165,\"calleeAudioInCallRtpCount\":242,\"callerAudioRecordCount\":373,\"calleeAudioRecordCount\":0,\"callerVideoRtpCount\":0,\"calleeVideoRtpCount\":0,\"callerVideoRecordCount\":0,\"calleeVideoRecordCount\":0}"
+	sId := "70000000000000290748422749691914" //"257694743411105807"
+
+	exam := "{\"sessionId\":\"308373245311066232\",\"callerNum\":\"19802021377\",\"calleeNum\":\"19802021851\",\"userId\":\"367\",\"msId\":\"1\",\"address\":\"127.0.0.1:18080\",\"version\":\"1.0.0\",\"volume\":\"\",\"path\":\"367/2026-10-08/1791446107\",\"callerAudioFile\":\"Caller_308373245311066232_20261008155507.amr\",\"calleeAudioFile\":\"Callee_308373245311066232_20261008155507.amr\",\"callerVideoFile\":\"\",\"calleeVideoFile\":\"\",\"earlyAudioFile\":\"\",\"options\":\"{\\\"recordSuffix\\\":\\\"mp3\\\",\\\"reverseLeg\\\":false,\\\"separateLeg\\\":false,\\\"isRecord\\\":true,\\\"separateEarly\\\":false,\\\"bindId\\\":\\\"\\\",\\\"userData\\\":{\\\"callerNumber\\\":\\\"19802021377\\\",\\\"calleeNumber\\\":\\\"19802021851\\\",\\\"bizNumber\\\":\\\"19802021377\\\",\\\"handleStartTime\\\":\\\"2026-10-08 15:55:07\\\",\\\"companyId\\\":201,\\\"customerId\\\":367,\\\"asCallBackUrl\\\":\\\"http://10.34.108.2:5061/vi/resultCallBack\\\",\\\"isSegment\\\":1}}\",\"config\":\"{\\\"calleeNum\\\":\\\"19802021851\\\",\\\"callerNum\\\":\\\"19802021377\\\",\\\"initialSegments\\\":60,\\\"mode\\\":\\\"RAW\\\",\\\"period\\\":\\\"InCall\\\",\\\"platformId\\\":\\\"367\\\",\\\"sampleRate\\\":8000,\\\"secretNum\\\":\\\"19802021377\\\",\\\"segments\\\":30,\\\"sessionId\\\":\\\"308373245311066232\\\",\\\"source\\\":3,\\\"startTime\\\":\\\"2026-10-08 15:55:07\\\",\\\"url\\\":\\\"INSPECT\\\",\\\"userData\\\":\\\"{\\\\\\\"callerNumber\\\\\\\":\\\\\\\"19802021377\\\\\\\",\\\\\\\"calleeNumber\\\\\\\":\\\\\\\"19802021851\\\\\\\",\\\\\\\"bizNumber\\\\\\\":\\\\\\\"19802021377\\\\\\\",\\\\\\\"handleStartTime\\\\\\\":\\\\\\\"2026-10-08 15:55:07\\\\\\\",\\\\\\\"companyId\\\\\\\":201,\\\\\\\"customerId\\\\\\\":367,\\\\\\\"asCallBackUrl\\\\\\\":\\\\\\\"http://10.34.108.2:5061/vi/resultCallBack\\\\\\\",\\\\\\\"isSegment\\\\\\\":1}\\\",\\\"userId\\\":\\\"367\\\"}\",\"startTime\":1791446107,\"fallback\":false,\"callerAudioRtpCount\":246,\"calleeAudioRtpCount\":1044,\"callerAudioInCallRtpCount\":41,\"calleeAudioInCallRtpCount\":121,\"callerAudioRecordCount\":175,\"calleeAudioRecordCount\":175,\"callerVideoRtpCount\":0,\"calleeVideoRtpCount\":0,\"callerVideoRecordCount\":0,\"calleeVideoRecordCount\":0}"
+	sId = "308373245311066232"
+
+	ffMerge := processor.NewFfMerge(sId)
+	startMills := time.Now()
+	_, mode, err := ffMerge.MergeSh(exam, conf.App.RocketMsg.ModeBiz)
+	if err != nil {
+		log.WarnK(sId, "testHandler,err=%v", err)
+	}
+	sp := time.Since(startMills).Milliseconds()
+	log.InfoK(sId, "testHandler,sp=%v,mode=%v", sp, mode)
+
+	//response
+	ctx.JSON(http.StatusOK, gin.H{"message": "ok"})
+}

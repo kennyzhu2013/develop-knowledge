@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="asr" op="sendToMQ"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="desensitization" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+    <event name="desensitization_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${desensitizationStatus})">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">1</attribute>
+                </action>
+                <action application="keywordAnalysis" op="sendToMQ"/>
+                <action application="rt_qc" op="sendToMQ"/>
+            </if>
+            <else>
+                <action application="process" op="fail"/>
+            </else>
+        </condition>
+    </event>
+    <event name="rt_resp">
+        <action application="event" op="sendToEvent" data="rt_ka_event"/>
+    </event>
+    <event name="keyword_analysis_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordAnalysisStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else>
+                <action application="event" op="sendToEvent" data="rt_ka_event"/>
+            </else>
+        </condition>
+    </event>
+    <event name="rt_ka_event">
+        <condition>
+            <if expression="#calculate.notNull(${rtStatus}, ${keywordAnalysisStatus}) and (T(Integer).valueOf(${keywordAnalysisResult}.get(0).getResult()) == 1 or (#calculate.notNull(${rtFirstLabel}) and T(Integer).valueOf(${rtFirstLabel}) == 4))">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">3</attribute>
+                </action>
+                <action application="qwen" op="sendToMQ"/>
+            </if>
+            <else-if expression="#calculate.notNull(${rtStatus}, ${keywordAnalysisStatus})">
+                <action application="process" op="success"/>
+            </else-if>
+        </condition>
+    </event>
+    <event name="qwen_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${qwenStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else>
+                <action application="rag" op="sendToMQ">
+                    <attribute name="text">qwenResult</attribute>
+                </action>
+            </else>
+        </condition>
+    </event>
+    <event name="rag_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${ragStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else-if expression="${ragResults}.get(0).getScore() &lt; 0.9">
+                <action application="deepseek" op="sendToMQ"/>
+            </else-if>
+            <else>
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">1</attribute>
+                </action>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+    <event name="deepseek_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${deepSeekStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else-if expression="T(Integer).valueOf(${deepSeekResult}) == 1">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">2</attribute>
+                </action>
+                <action application="process" op="success"/>
+            </else-if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>

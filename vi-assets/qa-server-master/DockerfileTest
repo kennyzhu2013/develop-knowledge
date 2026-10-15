@@ -1,0 +1,24 @@
+# FROM devrepo-devops.cidc-rp-2215.4c-beta.cmecloud.cn/cidc-rp-2215_553fb3cbcf594a3c9fbd88bb03bd1a46_docker2_48/python:3.14.6
+FROM devrepo-devops.cidc-rp-2215.4c-beta.cmecloud.cn/cidc-rp-2215_553fb3cbcf594a3c9fbd88bb03bd1a46_docker2_48/qa-server:1.4.6
+# 将构建环境下的文件OR目录, 复制到镜像中的/code目录下,
+ADD . /qa-server
+
+# 设置/切换 当前工作目录 为 /code
+WORKDIR /qa-server
+
+RUN pip3 install -U pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 安装python环境支持(针对python项目)
+RUN pip3 install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 暴露出外界访问容器的端口
+#EXPOSE 7600
+# 设置环境变量的默认值
+#ENV FLASK_ENV=local
+ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+RUN mkdir -p $PROMETHEUS_MULTIPROC_DIR
+
+# ENTRYPOINT 和 CMD 指令均可用于指定容器启动时要运行的命令
+# 区别在于 CMD 命令可以被 docker run命令覆盖
+# ENTRYPOINT ["python3", "main.py"]
+CMD rm -rf "$PROMETHEUS_MULTIPROC_DIR" && mkdir -p "$PROMETHEUS_MULTIPROC_DIR" && exec gunicorn -c gunicorn_conf.py app:app

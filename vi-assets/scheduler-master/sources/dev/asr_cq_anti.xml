@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="asr" op="sendToMQ"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else-if expression="#calculate.gt(#calculate.length(${asrText}), 45)">
+                <action application="desensitization" op="sendToMQ"/>
+            </else-if>
+            <else>
+                <action application="process" op="fail">
+                    <attribute name="model">asr</attribute>
+                    <attribute name="errorMessage">转写文字长度小于45个字符</attribute>
+                </action>
+            </else>
+        </condition>
+    </event>
+    <event name="desensitization_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${desensitizationStatus})">
+                <action application="cq_anti" op="sendToMQ"/>
+            </if>
+            <else>
+                <action application="process" op="fail"/>
+            </else>
+        </condition>
+    </event>
+    <event name="cq_anti_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${cqAntiStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="jt_asr" op="sendToMQ"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.notNull(${asrText})">
+                <action application="process" op="success"/>
+            </if>
+            <else>
+                <action application="process" op="fail"/>
+            </else>
+        </condition>
+    </event>
+</events>

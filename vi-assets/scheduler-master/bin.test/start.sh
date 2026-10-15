@@ -1,0 +1,1 @@
+java -server -Xms4g -Xmx6g -Xmn1g -XX:+UseParallelGC -classpath ./config -jar scheduler-jar-with-dependencies.jar --logging.config=config/logback.xml

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="asr" op="sendToMQ"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="desensitization" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+    <event name="desensitization_resp">
+        <condition>
+            <if expression="#calculate.isTrue(${desensitizationStatus})">
+                <action application="keywordAnalysis" op="sendToMQ"/>
+            </if>
+            <else>
+                <action application="process" op="stop"/>
+            </else>
+        </condition>
+    </event>
+    <event name="keyword_analysis_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordAnalysisStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else>
+                <action application="keywordAnalysisLT" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+    <event name="keyword_analysis_lt_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordAnalysisLTStatus})">
+                <action application="process" op="stop"/>
+            </if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>
+

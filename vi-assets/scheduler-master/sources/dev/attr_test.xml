@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="asr" op="sendToMQ"/>
+        <action application="attribute" op="set" type = "1">
+            <attribute name="review">1</attribute>
+        </action>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else-if expression="#calculate.gt(#calculate.length(${asrText}), 45)">
+                <action application="process" op="success"/>
+            </else-if>
+            <else>
+                <action application="process" op="fail">
+                    <attribute name="model">asr</attribute>
+                    <attribute name="errorMessage">转写文字长度小于45个字符</attribute>
+                </action>
+            </else>
+        </condition>
+    </event>
+</events>

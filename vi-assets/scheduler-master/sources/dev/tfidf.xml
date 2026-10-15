@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="http_event">
+        <condition>
+            <if expression="#calculate.et(${tfidfType}, start)">
+                <action application="tfidf" op="start"/>
+            </if>
+            <else>
+                <action application="tfidf" op="end"/>
+            </else>
+        </condition>
+    </event>
+    <event name="initial">
+        <action application="tfidf" op="sendToMQ"/>
+        <action application="process" op="success"/>
+    </event>
+</events>

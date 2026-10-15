@@ -1,0 +1,44 @@
+appInfo:
+  host: {{ip}}
+  port: 9036
+  version: 1.0
+  registry:
+    clusterName: vii
+    serverName: com.cmic.vi.offline
+    serverId: {{id}}
+    address:
+      - {{etcd1}}
+      - {{etcd2}}
+      - {{etcd3}}
+
+logInfo:
+  logLevel: info
+  logPath: /var/log/offline-merge
+  logFile: all.log
+  logMaxFiles: 50
+
+rocketMq:
+  namespace: VI
+  accessKey: {{rocketmq_ak}}
+  secretKey: {{rocketmq_sk}}
+  maxAttempts: 3
+  mergeTopic: TID_VI_MEDIA_RECORD_MERGE_NORMAL
+  mergeGroup: GID_VI_MERGE_RECORD
+  viTopic: TID_VI_MERGE_BILL_RECORD_NORMAL
+  dccTopic: TID_DCC_MERGE_MSG_BILL_NORMAL
+  endpoint: {{rocketmq_endpoints}}
+  consumptionThreadCount: 20
+  modeBiz: voiceInspection
+
+outbound:
+  fileCluster: vii
+  fileAppName: com.cmic.vi.mdownload
+  fileUri: /inner/media/upload
+  mediaCluster: dcc
+  mediaAppName: com.cmic.media
+  mediaUri: /media/upload
+  timeout: 10
+  uploadFailSaveLocal: true
+
+ffmpeg:
+  staticPath: /home/production/ffmpeg-4.1.3-amd64-static/ffmpeg

@@ -1,0 +1,9 @@
+package com.cmic.config.xml;
+
+import lombok.Data;
+
+@Data
+public class AttributeXml {
+    private String name;
+    private String value;
+}

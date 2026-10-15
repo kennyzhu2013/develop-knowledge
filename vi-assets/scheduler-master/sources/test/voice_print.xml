@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="vpr" op="sendToMQ"/>
+    </event>
+    <event name="vpr_resp">
+        <action application="process" op="success"/>
+    </event>
+</events>

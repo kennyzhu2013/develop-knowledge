@@ -1,0 +1,1 @@
+java -javaagent:./jmx_prometheus_javaagent-0.12.0.jar=8588:config.yaml -server -Xms1g -Xmx1g  -XX:+UnlockExperimentalVMOptions -XX:+UseZGC  -Dlog4j.configurationFile=config/log4j2.xml -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector  -Djava.library.path=. -jar vi-as*.jar

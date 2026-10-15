@@ -1,0 +1,35 @@
+dataSources:
+  ds_0: !!com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://{{db_auth}}/user_qc?characterEncoding=utf8&amp&useSSL=false&connectTimeout=10000&socketTimeout=10000
+    username: {{db_auth_username}}
+    password: {{db_auth_password}}
+    initialSize: 5
+    maxActive: 30
+    validationQuery: select 1
+    maxWait: 1000
+
+
+shardingRule:
+  # 数据分片规则配置
+  tables:
+    # 逻辑表名
+    base_prod_num:
+      # 实际数据节点
+      actualDataNodes: ds_0.base_prod_num_$->{000..999}
+      # 分表策略
+      tableStrategy:
+        # 标准分片策略
+        standard:
+          # 用于分片的数据库字段名
+          shardingColumn: number
+          # 精确分片算法类名（全限定名）
+          preciseAlgorithmClassName: com.cmic.util.CustomTableShardingAlgorithm
+  defaultDatabaseStrategy:
+    none:
+  defaultTableStrategy:
+    none:
+  defaultKeyGeneratorClassName: io.shardingsphere.core.keygen.DefaultKeyGenerator
+  
+props:
+  sql.show: false

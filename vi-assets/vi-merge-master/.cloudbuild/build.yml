@@ -1,0 +1,18 @@
+# This YAML is the default template and can be modified based on this 
+---
+version: 2.0
+steps:
+  PRE_BUILD:
+  - checkout:
+      name: "checkout"
+      inputs:
+        scm: "codehub"
+        url: "git@codehub-devops.cidc-rp-2215.4c-beta.cmecloud.cn:8f677d79a3684e57b4d1d2bb04828d5f/voice_inspection/vi-merge.git"
+        branch: "master"
+        lfs: false
+        submodule: false
+  BUILD:
+  - sh:
+      name: "sh"
+      inputs:
+        command: "echo hello"

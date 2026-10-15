@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="attribute" op="set" type = "1">
+            <attribute name="qcResult">1</attribute>
+        </action>
+        <condition>
+            <if expression="#task.stream" application="taskCondition">
+                <action application="shard" op="sendShard"/>
+            </if>
+            <else>
+                <action application="asr" op="sendToMq"/>
+            </else>
+        </condition>
+    </event>
+    <event name="shard_send_resp">
+        <action application="asr" op="sendToMq"/>
+    </event>
+    <event name="asr_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else>
+                <action application="desensitization" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+    <event name="desensitization_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${desensitizationStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else-if expression="#task.stream" application="taskCondition">
+                <action application="shard" op="updateAsrText"/>
+            </else-if>
+        </condition>
+        <condition>
+            <if expression="#calculate.lt(#calculate.length(${asrText}), 45)">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else-if expression="!#task.stream" application="taskCondition">
+                <action application="keyword" op="match"/>
+                <action application="keywordAnalysisLT" op="sendToMQ"/>
+            </else-if>
+            <else-if expression="#job.attributes['endFlag']" application="taskCondition">
+                <action application="keyword" op="match"/>
+                <action application="keywordAnalysisLT" op="sendToMQ"/>
+            </else-if>
+            <else-if expression="#call.interruptShard == '1'" application="redisCondition">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else-if>
+            <else>
+                <action application="keywordAnalysisLT" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="keyword_analysis_lt_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordAnalysisLTStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else-if expression="T(Integer).valueOf(${keywordAnalysisLTResult}.get(0).getResult()) == 1">
+                <action application="qwen" op="sendToMQ"/>
+            </else-if>
+            <else>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else>
+        </condition>
+    </event>
+    <event name="qwen_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${qwenStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else>
+                <action application="rag" op="sendToMQ">
+                    <attribute name="text">qwenResult</attribute>
+                </action>
+            </else>
+        </condition>
+    </event>
+    <event name="rag_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${ragStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else-if expression="${ragResults}.get(0).getScore() >= 0.9">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">1</attribute>
+                </action>
+                <action application="attribute" op="set" type = "2">
+                    <attribute name="interruptShard">1</attribute>
+                </action>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else-if>
+            <else>
+                <action application="rt_qc" op="sendToMQ"/>
+                <action application="keywordAnalysis" op="sendToMQ"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="keyword_analysis_resp">
+        <action application="event" op="sendToEvent" data="rt_kah_resp"/>
+    </event>
+    <event name="rt_resp">
+        <action application="event" op="sendToEvent" data="rt_kah_resp"/>
+    </event>
+    <event name="rt_kah_resp">
+        <condition>
+            <if expression="#calculate.notNull(${rtStatus}, ${keywordAnalysisStatus}) and ((#calculate.notNull(${rtFirstLabel}) and T(Integer).valueOf(${rtFirstLabel}) == 4) or T(Integer).valueOf(${keywordAnalysisResult}.get(0).getResult()) == 1)">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">3</attribute>
+                </action>
+                <action application="deepseek" op="sendToMQ"/>
+            </if>
+            <else expression="#calculate.notNull(${rtStatus}, ${keywordAnalysisStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="deepseek_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${deepSeekStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else-if expression="T(Integer).valueOf(${deepSeekResult}) == 1">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">2</attribute>
+                </action>
+                <action application="attribute" op="set" type = "2">
+                    <attribute name="interruptShard">1</attribute>
+                </action>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else-if>
+            <else>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="keyword_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${keywordStatus})">
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </if>
+            <else-if expression="#calculate.et(${matchedWord}.size(), 0)">
+                <action application="attribute" op="set" type = "1">
+                    <attribute name="qcResult">0</attribute>
+                    <attribute name="riskLevel">3</attribute>
+                </action>
+            </else-if>
+            <else>
+                <action application="event" op="sendToEvent" data="end_event"/>
+            </else>
+        </condition>
+    </event>
+
+    <event name="end_event">
+        <condition>
+            <if expression="#calculate.isFalse(${asrStatus}) or #calculate.isFalse(${desensitizationStatus})
+                or #calculate.isFalse(${keywordAnalysisLTStatus}) or #calculate.isFalse(${keywordAnalysisLTStatus})
+                or #calculate.isFalse(${qwenStatus}) or #calculate.isFalse(${ragStatus})
+                or #calculate.isFalse(${deepSeekStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else-if expression="#calculate.lt(#calculate.length(${asrText}), 45)">
+                <action application="process" op="fail">
+                    <attribute name="model">asr</attribute>
+                    <attribute name="errorMessage">转写文字长度小于45个字符</attribute>
+                </action>
+            </else-if>
+            <else-if expression="(!#task.stream or #job.attributes['endFlag']) and !#job.responseResults[keywordStatus]" application="taskCondition">
+                <action application="process" op="fail"/>
+            </else-if>
+            <else-if expression="(!#task.stream or #job.attributes['endFlag']) and #job.responseResults[keywordStatus] != null
+                                    and (
+                                    (#job.responseResults[keywordAnalysisLTResult] != null and #job.responseResults[keywordAnalysisLTResult][0].result != '1')
+                                    or (#job.responseResults[ragResults] != null and #job.responseResults[ragResults][0].score >= 0.9)
+                                    or (#job.responseResults[rtStatus] != null
+                                        and #job.responseResults[keywordAnalysisStatus] != null
+                                        and (#job.responseResults[rtFirstLabel] != null and #job.responseResults[rtFirstLabel] != 4)
+                                        and #job.responseResults[keywordAnalysisResult][0].result != '1')
+                                    or #job.responseResults[deepSeekStatus] != null)" application="taskCondition">
+                <action application="process" op="success"/>
+            </else-if>
+            <else expression="#task.stream and !#job.attributes['endFlag']" application="taskCondition">
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+        <condition>
+            <if expression="#task.stream" application="taskCondition">
+                <action application="shard" op="finishShard"/>
+            </if>
+        </condition>
+    </event>
+</events>

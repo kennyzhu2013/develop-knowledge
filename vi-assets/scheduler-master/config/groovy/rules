@@ -1,0 +1,5 @@
+rules:
+  - name: rule1
+    script: Qc4Event.groovy
+    condition: "condition"
+    action: "action"

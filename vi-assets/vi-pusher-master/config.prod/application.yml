@@ -1,0 +1,135 @@
+server: 
+   port: 9283
+   address: {{ip}}
+   tomcat:
+     max-connections: 10000
+     max-threads: 1000
+
+rocketmq:
+  #生产者配置
+  producer:
+    endpoints: {{rocketmqIps}}
+    access-key: {{rocketmqAccess}}
+    secret-key: {{rocketmqSecret}}
+  push-consumer:
+    access-key: {{rocketmqAccess}}
+    secret-key: {{rocketmqSecret}}
+    endpoints: {{rocketmqIps}}
+
+
+
+spring:
+  datasource:
+    dynamic:
+      primary: user_qc
+      datasource:
+        user_qc:
+          url: jdbc:mysql://{{db_auth}}/user_qc?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+          username: {{db_auth_username}}
+          password: {{db_auth_password}}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          type: com.alibaba.druid.pool.DruidDataSource  # 这行没有冒号结尾
+          druid: # 对齐到type的层级
+            initial-size: 1
+            min-idle: 5
+            max-active: 50
+            max-wait: 1000
+            validation-query: SELECT 1
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+        dcc_conf:
+          url: jdbc:mysql://{{db_conf}}/dcc_conf?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+          username: {{db_conf_username}}
+          password: {{db_donf_password}}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          type: com.alibaba.druid.pool.DruidDataSource  # 这行没有冒号结尾
+          druid: # 对齐到type的层级
+            initial-size: 1
+            min-idle: 5
+            max-active: 50
+            max-wait: 1000
+            validation-query: SELECT 1
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+        vi_bill:
+          url: jdbc:mysql://{{db_bill}}/vi_bill?characterEncoding=utf8&amp&useSSL=false
+          username: {{db_bill_username}}
+          password: {{db_bill_password}}
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          type: com.alibaba.druid.pool.DruidDataSource  # 这行没有冒号结尾
+          druid: # 对齐到type的层级
+            initial-size: 1
+            min-idle: 5
+            max-active: 50
+            max-wait: 1000
+            validation-query: SELECT 1
+            test-while-idle: true
+            test-on-borrow: false
+            test-on-return: false
+
+#   jackson:
+#     parser:
+#       ALLOW BACKSLASH_ESCAPING_ANY_CHARACTER : true
+
+#  rabbitmq:
+#    host: 10.153.90.12
+#    port: 15672
+#    username: ziyan
+#    password: ziyan
+#    virtual-host: xmode
+
+
+management:
+  server:
+    port: 19283
+    address: 0.0.0.0
+  endpoints:
+    enabled-by-default: false
+    web:
+      base-path: /manage/info
+      exposure:
+        include: prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+
+parameters-config:
+  # 1:南方节点  2： 北方节点   3:联调环境
+  location: {{location}}
+  cloud: 1
+  #etcd的ip和端口
+  etcd: http://{{etcd1}},http://{{etcd2}},http://{{etcd3}}
+  #etcd: http://10.153.90.7:2379,http://10.153.90.11:2379,http://10.153.90.12:2379
+  monitor-callout: https://dev.ymm56.com/virtual-phone-web/open/monitor/callout/chinamobile
+  monitor-billinfo: https://dev.ymm56.com/virtual-phone-web/open/monitor/billinfo/chinamobile
+  monitor-ringinfo: https://dev.ymm56.com/virtual-phone-web/open/monitor/ringinfo/chinamobile
+  ymm-shortbill-time: 20
+  timeInterval: 3
+  second-reach-prod: https://117.161.4.159/api/mid/mid-reach/call-finish
+  second-reach-test: https://117.161.4.158/api/mid/mid-reach/call-finish
+  second-reach-secretary-prod: https://117.161.4.159/api/message/reach/sr-count/call-record
+  second-reach-secretary-test: https://117.161.4.158/api/message/reach/sr-count/call-record
+  video-play-test: http://116.62.199.189:7080/api/imsct-api/bill-center/videoPlay/result
+  version: 1.0
+  httpproxy-name: {{vi_bill_billproxy_app_name}}
+  cluster-name: vi
+  debug-record-host : https://qafile.51hutui.com:9090/file
+  ecloud-south-record: https://ydysouthfile.51hutui.com:9080/file
+  ecloud-north-record: https://ydynorthfile.51hutui.com:9080/file
+  dbnum: 3
+  max-concurrency: 20
+  internal-platform-list: 12,30,46,47,48
+  billConsumerCount: 50
+  recordConsumerCount: 30
+  inspectionConsumerCount: 40
+  delayRecordConsumerCount: 30
+
+
+pusher:
+  billpusher: true
+  recordpusher: true
+  repusher: {{repusher}}
+  billnewclear: {{billnewclear}}
+  inspectionpusher: {{inspectionpusher}}

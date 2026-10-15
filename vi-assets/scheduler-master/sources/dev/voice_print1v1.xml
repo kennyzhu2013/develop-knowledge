@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<events>
+    <event name="initial">
+        <action application="vp" op="sendToMQ">
+            <attribute name="type">2</attribute>
+        </action>
+    </event>
+    <event name="vp_resp">
+        <condition>
+            <if expression="#calculate.isFalse(${vpStatus})">
+                <action application="process" op="fail"/>
+            </if>
+            <else>
+                <action application="process" op="success"/>
+            </else>
+        </condition>
+    </event>
+</events>
