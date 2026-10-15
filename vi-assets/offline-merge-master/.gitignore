@@ -5,6 +5,9 @@
 *.so
 *.dylib
 
+# Local ffmpeg binary; exceeds GitHub's recommended file size
+bin/ffmpeg
+
 # Test binary, build with `go test -c`
 *.test
 
